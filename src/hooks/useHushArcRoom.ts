@@ -64,7 +64,7 @@ export function useHushArcRoom(options: UseHushArcRoomOptions) {
   const roomKeyRef = useRef<string>(initialRoomKey);
   const keyPairRef = useRef<EphemeralKeyPair | null>(null);
   const wsRef = useRef<WebSocket | null>(null);
-  const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const incomingAttachmentsRef = useRef<
     Map<
       string,
