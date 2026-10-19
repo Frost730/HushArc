@@ -173,7 +173,7 @@ export function useHushArcRoom(options: UseHushArcRoomOptions) {
                             type: 'key_exchange',
                             roomId,
                             recipientId: data.participant.id,
-                            sealedKey,
+                            sealedKey: sealedKey.ciphertext,
                           })
                         );
                       }
