@@ -81,7 +81,7 @@ export const InvitationModal: React.FC<InvitationModalProps> = ({
 
           <div className="p-3 bg-ink rounded-xl border border-ink-border space-y-2">
             <div className="text-[11px] font-mono text-text-muted uppercase tracking-wider">
-              Encrypted Bearer Invitation
+              Invitation Link
             </div>
             <div className="flex items-center gap-2">
               <input
@@ -101,11 +101,9 @@ export const InvitationModal: React.FC<InvitationModalProps> = ({
             </div>
           </div>
 
-          <div className="flex items-start gap-2 p-2.5 rounded-lg bg-ink/50 border border-ink-border/50 text-[11px] text-text-muted">
-            <ShieldCheck className="w-4 h-4 text-signal-lime shrink-0 mt-0.5" />
-            <span>
-              The encryption key is placed in the URL fragment (<code className="text-signal-lime">#key=...</code>). The server never sees this key.
-            </span>
+          <div className="flex items-center gap-2 p-2 rounded-lg bg-ink/50 border border-ink-border/50 text-[11px] text-text-muted">
+            <ShieldCheck className="w-4 h-4 text-signal-lime shrink-0" />
+            <span>End-to-end encrypted. Only recipients with this link can read messages.</span>
           </div>
         </div>
 

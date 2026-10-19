@@ -50,11 +50,10 @@ export const EmptyRoomState: React.FC<EmptyRoomStateProps> = ({
 
       <div className="space-y-2">
         <h3 className="font-display font-semibold text-lg text-text-primary tracking-tight">
-          {isDirect ? 'Waiting for companion signal...' : 'Room open for participants'}
+          {isDirect ? 'Waiting for companion...' : 'Room is ready for participants'}
         </h3>
         <p className="text-xs text-text-secondary leading-relaxed max-w-xs mx-auto">
-          Share your private invitation link. The encryption key is embedded in the URL fragment
-          and will never be transmitted to the server.
+          Share your private invitation link to begin the conversation.
         </p>
       </div>
 
@@ -96,10 +95,6 @@ export const EmptyRoomState: React.FC<EmptyRoomStateProps> = ({
             <span>Share via Device Sheet</span>
           </button>
         )}
-      </div>
-
-      <div className="text-[11px] font-mono text-sage-light tracking-wide bg-ink-elevated/40 px-3 py-1.5 rounded-full border border-ink-border/50">
-        ⚡ No message queue • Both participants must be online
       </div>
     </div>
   );

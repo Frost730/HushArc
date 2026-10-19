@@ -40,58 +40,48 @@ export const PrivacyModal: React.FC<PrivacyModalProps> = ({ isOpen, onClose }) =
           <div className="p-3.5 bg-ink rounded-xl border border-ink-border space-y-2">
             <div className="flex items-center gap-2 text-text-primary font-semibold font-mono text-[13px]">
               <DatabaseZap className="w-4 h-4 text-signal-lime" />
-              Strict No-Persistence Architecture
+              Zero Persistent Storage
             </div>
             <p>
-              HushArc contains no PostgreSQL, SQLite, Redis, MongoDB, or local filesystems. Active
-              rooms exist exclusively in server RAM. When the last participant leaves or closes the
-              tab, the room and its metadata are destroyed immediately.
+              HushArc does not store messages on disk or in any permanent database. Active rooms exist
+              only in live memory. When participants leave or close the page, the room and its
+              messages are permanently destroyed.
             </p>
           </div>
 
           <div className="p-3.5 bg-ink rounded-xl border border-ink-border space-y-2">
             <div className="flex items-center gap-2 text-text-primary font-semibold font-mono text-[13px]">
               <EyeOff className="w-4 h-4 text-signal-lime" />
-              Genuine End-to-End Encryption
+              End-to-End Encryption
             </div>
             <p>
-              Messages are encrypted inside your browser using Libsodium authenticated encryption
-              (<strong>XChaCha20-Poly1305</strong>). The encryption key is held only in the browser
-              memory and passed through the URL hash fragment (#key=...), which web browsers never
-              send to the Express backend.
+              All messages are encrypted on your device before being sent. The server only relays
+              encrypted ciphertext and has no ability to read your conversations.
             </p>
           </div>
 
           <div className="p-3.5 bg-ink rounded-xl border border-ink-border space-y-2">
             <div className="flex items-center gap-2 text-text-primary font-semibold font-mono text-[13px]">
               <Cpu className="w-4 h-4 text-signal-lime" />
-              No Offline Queue
+              Live Presence Only
             </div>
             <p>
-              If a recipient is not connected when a transmission is dispatched, the message is not
-              stored for later delivery. Both participants must be simultaneously present in the
-              moment.
+              There are no offline queues or stored inboxes. If a participant is not currently
+              connected, messages are not stored for later delivery.
             </p>
           </div>
 
-          <div className="p-3.5 bg-ink/60 rounded-xl border border-coral/30 space-y-2 text-text-secondary">
-            <div className="flex items-center gap-2 text-coral font-semibold font-mono text-[13px]">
-              <AlertTriangle className="w-4 h-4" />
-              Honest Security Boundaries & Limitations
+          <div className="p-3.5 bg-ink/60 rounded-xl border border-ink-border space-y-2 text-text-secondary">
+            <div className="flex items-center gap-2 text-text-primary font-semibold font-mono text-[13px]">
+              <AlertTriangle className="w-4 h-4 text-signal-lime" />
+              Security Best Practices
             </div>
             <ul className="list-disc list-inside space-y-1 pl-1 text-[11px]">
               <li>
-                Anyone with the full invitation URL can join the room. Treat links as bearer credentials.
+                Anyone who receives your complete invitation link can join your room. Share links only with trusted people.
               </li>
               <li>
-                We do not promise "total untraceability" from network intermediaries; Render and ISPs
-                may log TCP connection timestamps and IP metadata.
-              </li>
-              <li>
-                Authorized room participants can copy or screenshot plaintext while in the room.
-              </li>
-              <li>
-                JavaScript memory cannot be guaranteed physically zeroized by the OS after process exit.
+                Authorized room members can view and copy messages while connected.
               </li>
             </ul>
           </div>

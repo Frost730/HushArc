@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, Sparkles, Shield, Users, User, ArrowRight, Loader2 } from 'lucide-react';
+import { X, Sparkles, Users, User, ArrowRight, Loader2 } from 'lucide-react';
 import { HushArcMark } from '../../components/HushArcMark.js';
 import { generateRandomNickname, buildInvitationUrl } from '../../lib/ephemeral-session/session.js';
 import { generateSymmetricRoomKey } from '../../lib/crypto/e2ee.js';
@@ -160,9 +160,8 @@ export const CreateRoomModal: React.FC<CreateRoomModalProps> = ({
 
           {/* Temporary Nickname */}
           <div className="space-y-1.5">
-            <label className="text-[11px] font-mono text-text-muted uppercase tracking-wider flex items-center justify-between">
-              <span>Your Temporary Identity</span>
-              <span className="text-sage-light normal-case">Not an account</span>
+            <label className="text-[11px] font-mono text-text-muted uppercase tracking-wider">
+              Your Nickname
             </label>
             <div className="flex items-center gap-2 p-1.5 bg-ink rounded-xl border border-ink-border focus-within:border-signal-lime">
               <input
@@ -178,19 +177,11 @@ export const CreateRoomModal: React.FC<CreateRoomModalProps> = ({
                 type="button"
                 onClick={handleRandomizeNickname}
                 className="p-1.5 rounded-lg bg-ink-elevated hover:bg-ink-hover text-text-secondary hover:text-signal-lime transition-colors"
-                title="Generate another signal identity"
+                title="Generate another nickname"
               >
                 <Sparkles className="w-3.5 h-3.5" />
               </button>
             </div>
-          </div>
-
-          <div className="p-3 bg-ink/40 rounded-xl border border-ink-border/50 text-[11px] text-text-muted space-y-1">
-            <div className="flex items-center gap-1.5 text-text-secondary font-medium">
-              <Shield className="w-3.5 h-3.5 text-signal-lime" />
-              <span>Zero Record Guarantee</span>
-            </div>
-            <p>No chat history is kept on the server or on disk. Disconnecting destroys all traces.</p>
           </div>
 
           <button
@@ -201,11 +192,11 @@ export const CreateRoomModal: React.FC<CreateRoomModalProps> = ({
             {loading ? (
               <>
                 <Loader2 className="w-4 h-4 animate-spin" />
-                <span>Establishing Secure Epoch...</span>
+                <span>Creating Room...</span>
               </>
             ) : (
               <>
-                <span>Launch Ephemeral Room</span>
+                <span>Create Room</span>
                 <ArrowRight className="w-3.5 h-3.5" />
               </>
             )}

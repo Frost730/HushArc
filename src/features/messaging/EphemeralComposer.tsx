@@ -101,12 +101,11 @@ export const EphemeralComposer: React.FC<EphemeralComposerProps> = ({
         </button>
       </div>
 
-      <div className="flex justify-between items-center px-1 text-[10px] font-mono text-text-muted">
-        <span>⚡ Encrypted client-side with XChaCha20-Poly1305</span>
-        {text.length > 500 && (
+      {text.length > 500 && (
+        <div className="flex justify-end px-1 text-[10px] font-mono text-text-muted">
           <span>{text.length}/2000</span>
-        )}
-      </div>
+        </div>
+      )}
     </div>
   );
 };
