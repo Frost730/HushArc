@@ -49,6 +49,7 @@ export const ChatRoom: React.FC<ChatRoomProps> = ({
     currentEpoch,
     myParticipantId,
     sendMessage,
+    sendAttachment,
     sendReaction,
     sendTyping,
     rotateRoomKey,
@@ -188,6 +189,7 @@ export const ChatRoom: React.FC<ChatRoomProps> = ({
         {/* Message Composer */}
         <EphemeralComposer
           onSendMessage={(text, replyToId) => sendMessage(text, replyToId)}
+          onSendAttachment={(file) => sendAttachment(file)}
           onTyping={(isTyping) => sendTyping(isTyping)}
           replyToMessage={replyTarget}
           onClearReply={() => setReplyTarget(null)}

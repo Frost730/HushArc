@@ -108,6 +108,55 @@ export async function decryptTextMessage(
 }
 
 /**
+ * Encrypt a binary buffer chunk using authenticated XChaCha20-Poly1305.
+ */
+export async function encryptBinaryChunk(
+  chunkBytes: Uint8Array,
+  base64UrlKey: string,
+  additionalData = ''
+): Promise<EncryptedPayload> {
+  const sodium = await ensureSodiumReady();
+  const key = sodium.from_base64(base64UrlKey, sodium.base64_variants.URLSAFE_NO_PADDING);
+  const nonce = sodium.randombytes_buf(sodium.crypto_aead_xchacha20poly1305_ietf_NPUBBYTES);
+
+  const ciphertext = sodium.crypto_aead_xchacha20poly1305_ietf_encrypt(
+    chunkBytes,
+    additionalData.length > 0 ? additionalData : null,
+    null,
+    nonce,
+    key
+  );
+
+  return {
+    ciphertext: sodium.to_base64(ciphertext, sodium.base64_variants.ORIGINAL),
+    nonce: sodium.to_base64(nonce, sodium.base64_variants.ORIGINAL),
+  };
+}
+
+/**
+ * Decrypt a binary buffer chunk using authenticated XChaCha20-Poly1305.
+ */
+export async function decryptBinaryChunk(
+  ciphertextBase64: string,
+  nonceBase64: string,
+  base64UrlKey: string,
+  additionalData = ''
+): Promise<Uint8Array> {
+  const sodium = await ensureSodiumReady();
+  const key = sodium.from_base64(base64UrlKey, sodium.base64_variants.URLSAFE_NO_PADDING);
+  const nonce = sodium.from_base64(nonceBase64, sodium.base64_variants.ORIGINAL);
+  const ciphertext = sodium.from_base64(ciphertextBase64, sodium.base64_variants.ORIGINAL);
+
+  return sodium.crypto_aead_xchacha20poly1305_ietf_decrypt(
+    null,
+    ciphertext,
+    additionalData.length > 0 ? additionalData : null,
+    nonce,
+    key
+  );
+}
+
+/**
  * Seal a new room key for a peer's public key using crypto_box_seal (anonymous public-key encryption).
  */
 export async function sealRoomKeyForPeer(

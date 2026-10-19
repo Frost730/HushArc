@@ -1,9 +1,10 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Send, X, CornerDownRight } from 'lucide-react';
+import { Send, X, CornerDownRight, Paperclip, Loader2 } from 'lucide-react';
 import type { DecryptedMessage } from '../../hooks/useHushArcRoom.js';
 
 interface EphemeralComposerProps {
   onSendMessage: (text: string, replyToId?: string) => void;
+  onSendAttachment?: (file: File) => Promise<void>;
   onTyping: (isTyping: boolean) => void;
   replyToMessage?: DecryptedMessage | null;
   onClearReply: () => void;
@@ -12,13 +13,17 @@ interface EphemeralComposerProps {
 
 export const EphemeralComposer: React.FC<EphemeralComposerProps> = ({
   onSendMessage,
+  onSendAttachment,
   onTyping,
   replyToMessage,
   onClearReply,
   disabled = false,
 }) => {
   const [text, setText] = useState('');
+  const [isAttaching, setIsAttaching] = useState(false);
+  const [attachmentError, setAttachmentError] = useState<string | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (textareaRef.current) {
@@ -54,6 +59,39 @@ export const EphemeralComposer: React.FC<EphemeralComposerProps> = ({
     }
   };
 
+  const handleFileClick = () => {
+    setAttachmentError(null);
+    fileInputRef.current?.click();
+  };
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Reset the input value so selecting the same file again triggers change
+    e.target.value = '';
+
+    // Enforce 5MB limit
+    if (file.size > 5 * 1024 * 1024) {
+      setAttachmentError('Attachment exceeds 5 MB limit');
+      setTimeout(() => setAttachmentError(null), 4000);
+      return;
+    }
+
+    if (!onSendAttachment) return;
+
+    try {
+      setIsAttaching(true);
+      setAttachmentError(null);
+      await onSendAttachment(file);
+    } catch (err) {
+      setAttachmentError(err instanceof Error ? err.message : 'Failed to transmit attachment');
+      setTimeout(() => setAttachmentError(null), 4000);
+    } finally {
+      setIsAttaching(false);
+    }
+  };
+
   return (
     <div className="w-full bg-ink-elevated border-t border-ink-border p-3 space-y-2 safe-bottom">
       {/* Quoted reply banner */}
@@ -75,8 +113,40 @@ export const EphemeralComposer: React.FC<EphemeralComposerProps> = ({
         </div>
       )}
 
-      {/* Main text composer */}
+      {/* Attachment error badge */}
+      {attachmentError && (
+        <div className="px-3 py-1 bg-coral-dim border border-coral text-coral rounded-lg text-xs font-mono">
+          {attachmentError}
+        </div>
+      )}
+
+      {/* Main composer bar */}
       <div className="flex items-end gap-2 bg-ink p-1.5 rounded-xl border border-ink-border focus-within:border-signal-lime transition-colors">
+        {/* Hidden file input */}
+        <input
+          ref={fileInputRef}
+          type="file"
+          className="hidden"
+          onChange={handleFileChange}
+          disabled={disabled || isAttaching}
+        />
+
+        {/* Attachment trigger */}
+        <button
+          type="button"
+          onClick={handleFileClick}
+          disabled={disabled || isAttaching}
+          className="shrink-0 p-2 rounded-lg text-text-muted hover:text-signal-lime hover:bg-ink-surface disabled:opacity-30 transition-all active:scale-95"
+          title="Attach encrypted file (max 5MB, chunked at 32KB)"
+          aria-label="Attach file"
+        >
+          {isAttaching ? (
+            <Loader2 className="w-4 h-4 animate-spin text-signal-lime" />
+          ) : (
+            <Paperclip className="w-4 h-4" />
+          )}
+        </button>
+
         <textarea
           ref={textareaRef}
           value={text}
@@ -86,7 +156,7 @@ export const EphemeralComposer: React.FC<EphemeralComposerProps> = ({
           placeholder="Transmit ephemeral signal... (Enter to send)"
           rows={1}
           maxLength={2000}
-          className="w-full bg-transparent px-3 py-2 text-xs font-sans text-text-primary placeholder:text-text-muted outline-none resize-none max-h-36 overflow-y-auto leading-relaxed"
+          className="w-full bg-transparent px-2 py-2 text-xs font-sans text-text-primary placeholder:text-text-muted outline-none resize-none max-h-36 overflow-y-auto leading-relaxed"
         />
 
         <button

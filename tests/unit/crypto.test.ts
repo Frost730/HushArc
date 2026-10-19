@@ -8,6 +8,8 @@ import {
   decryptTextMessage,
   sealRoomKeyForPeer,
   unsealRoomKeyFromPeer,
+  encryptBinaryChunk,
+  decryptBinaryChunk,
 } from '../../src/lib/crypto/e2ee.js';
 
 describe('HushArc Cryptographic Engine (Libsodium)', () => {
@@ -97,5 +99,16 @@ describe('HushArc Cryptographic Engine (Libsodium)', () => {
     await expect(
       unsealRoomKeyFromPeer(sealedForBob.ciphertext, aliceKeys.publicKey, aliceKeys.privateKey)
     ).rejects.toThrow();
+  });
+
+  it('encrypts and decrypts binary chunks with full integrity', async () => {
+    const roomKey = await generateSymmetricRoomKey();
+    const rawBytes = new Uint8Array([0x00, 0x48, 0x75, 0x73, 0x68, 0x41, 0x72, 0x63, 0xff, 0xfe]);
+
+    const encrypted = await encryptBinaryChunk(rawBytes, roomKey, 'chunk-0');
+    expect(encrypted.ciphertext).toBeDefined();
+
+    const decrypted = await decryptBinaryChunk(encrypted.ciphertext, encrypted.nonce, roomKey, 'chunk-0');
+    expect(decrypted).toEqual(rawBytes);
   });
 });

@@ -234,6 +234,33 @@ export function setupWebSocket(httpServer: Server, roomManager: EphemeralRoomMan
         return;
       }
 
+      // Handle encrypted binary attachment chunk relay (zero disk/server persistence)
+      if (event.type === 'attachment_chunk') {
+        const relayEvent: ServerEvent = {
+          type: 'attachment_chunk_relayed',
+          attachmentId: event.attachmentId,
+          senderId: senderInfo.participantId,
+          senderNickname: senderParticipant.nickname,
+          fileName: event.fileName,
+          fileType: event.fileType,
+          fileSize: event.fileSize,
+          chunkIndex: event.chunkIndex,
+          totalChunks: event.totalChunks,
+          epoch: event.epoch,
+          nonce: event.nonce,
+          ciphertext: event.ciphertext,
+          timestamp: Date.now(),
+        };
+
+        // Stream chunk immediately to active room peers without caching
+        roomManager.broadcastToRoom(
+          senderInfo.roomId,
+          relayEvent,
+          senderInfo.participantId
+        );
+        return;
+      }
+
       // Handle key rotation epoch announcement
       if (event.type === 'key_rotation_epoch') {
         // Sender has generated a new epoch key, encrypted each copy with the recipient's public key

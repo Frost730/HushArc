@@ -52,6 +52,20 @@ export const KeyRotationEpochEventSchema = z.object({
   ),
 });
 
+export const AttachmentChunkEventSchema = z.object({
+  type: z.literal('attachment_chunk'),
+  roomId: z.string().min(8).max(64),
+  attachmentId: z.string().min(4).max(64),
+  fileName: z.string().min(1).max(100),
+  fileType: z.string().min(1).max(64),
+  fileSize: z.number().int().min(1).max(5 * 1024 * 1024), // Max 5MB
+  chunkIndex: z.number().int().min(0),
+  totalChunks: z.number().int().min(1).max(250),
+  epoch: z.number().int().min(1),
+  nonce: z.string().min(16).max(64),
+  ciphertext: z.string().min(1).max(65536),
+});
+
 export const LeaveEventSchema = z.object({
   type: z.literal('leave'),
   roomId: z.string().min(8).max(64),
@@ -72,6 +86,7 @@ export const ClientEventSchema = z.discriminatedUnion('type', [
   ReactionEventSchema,
   TypingEventSchema,
   KeyRotationEpochEventSchema,
+  AttachmentChunkEventSchema,
   LeaveEventSchema,
   EndRoomEventSchema,
   PingEventSchema,

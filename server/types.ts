@@ -61,6 +61,19 @@ export type ClientEvent =
       encryptedKeys: Record<string, { nonce: string; ciphertext: string }>; // participantId -> encrypted room key
     }
   | {
+      type: 'attachment_chunk';
+      roomId: string;
+      attachmentId: string;
+      fileName: string;
+      fileType: string;
+      fileSize: number;
+      chunkIndex: number;
+      totalChunks: number;
+      epoch: number;
+      nonce: string;
+      ciphertext: string;
+    }
+  | {
       type: 'leave';
       roomId: string;
     }
@@ -130,6 +143,21 @@ export type ServerEvent =
       newEpoch: number;
       senderId: string;
       encryptedKeyForYou: { nonce: string; ciphertext: string };
+    }
+  | {
+      type: 'attachment_chunk_relayed';
+      attachmentId: string;
+      senderId: string;
+      senderNickname: string;
+      fileName: string;
+      fileType: string;
+      fileSize: number;
+      chunkIndex: number;
+      totalChunks: number;
+      epoch: number;
+      nonce: string;
+      ciphertext: string;
+      timestamp: number;
     }
   | {
       type: 'room_ended';

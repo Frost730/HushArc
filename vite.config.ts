@@ -33,5 +33,15 @@ export default defineConfig({
     outDir: 'dist',
     sourcemap: true,
     target: 'es2022',
+    chunkSizeWarningLimit: 1000,
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          'vendor-react': ['react', 'react-dom'],
+          'vendor-crypto': ['libsodium-wrappers'],
+          'vendor-icons': ['lucide-react'],
+        },
+      },
+    },
   },
 });

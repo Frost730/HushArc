@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Check, CheckCheck, CornerDownRight, Smile, Reply } from 'lucide-react';
+import { Check, CheckCheck, CornerDownRight, Smile, Reply, FileText, Download } from 'lucide-react';
 import type { DecryptedMessage } from '../../hooks/useHushArcRoom.js';
 import { ReactionPicker } from './ReactionPicker.js';
 
@@ -8,6 +8,12 @@ interface MessageListProps {
   onReply: (message: DecryptedMessage) => void;
   onReact: (messageId: string, emoji: string) => void;
   myParticipantId?: string;
+}
+
+function formatBytes(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
 }
 
 export const MessageList: React.FC<MessageListProps> = ({
@@ -92,9 +98,58 @@ export const MessageList: React.FC<MessageListProps> = ({
                   : 'bg-ink-elevated border border-ink-border text-text-primary rounded-tl-sm shadow-sm'
               }`}
             >
-              <div className="whitespace-pre-wrap selection:bg-signal-lime selection:text-ink">
-                {msg.plaintext}
-              </div>
+              {msg.attachment ? (
+                <div className="space-y-2">
+                  {msg.attachment.fileType.startsWith('image/') && msg.attachment.blobUrl && (
+                    <div className="overflow-hidden rounded-xl border border-ink-border max-w-sm">
+                      <img
+                        src={msg.attachment.blobUrl}
+                        alt={msg.attachment.fileName}
+                        className="max-h-64 w-auto object-cover hover:scale-[1.02] transition-transform duration-200 cursor-pointer"
+                        onClick={() => window.open(msg.attachment!.blobUrl, '_blank')}
+                      />
+                    </div>
+                  )}
+
+                  {/* File info bar & ephemeral download trigger */}
+                  <div className="flex items-center gap-2.5 p-2 bg-ink/60 rounded-xl border border-ink-border font-mono text-xs">
+                    <FileText className="w-5 h-5 text-signal-lime shrink-0" />
+                    <div className="flex-1 min-w-0">
+                      <div className="font-semibold text-text-primary truncate" title={msg.attachment.fileName}>
+                        {msg.attachment.fileName}
+                      </div>
+                      <div className="text-[10px] text-text-muted">
+                        {formatBytes(msg.attachment.fileSize)}
+                        {!msg.attachment.isComplete && ` • Decrypting chunks (${msg.attachment.progress}%)...`}
+                      </div>
+                      {!msg.attachment.isComplete && (
+                        <div className="w-full bg-ink-border h-1 rounded-full mt-1 overflow-hidden">
+                          <div
+                            className="bg-signal-lime h-full transition-all duration-150"
+                            style={{ width: `${msg.attachment.progress}%` }}
+                          />
+                        </div>
+                      )}
+                    </div>
+
+                    {msg.attachment.blobUrl && msg.attachment.isComplete && (
+                      <a
+                        href={msg.attachment.blobUrl}
+                        download={msg.attachment.fileName}
+                        className="p-1.5 rounded-lg bg-ink hover:bg-signal-lime text-text-muted hover:text-ink transition-colors shrink-0"
+                        title="Download ephemeral file"
+                        aria-label="Download attachment"
+                      >
+                        <Download className="w-4 h-4" />
+                      </a>
+                    )}
+                  </div>
+                </div>
+              ) : (
+                <div className="whitespace-pre-wrap selection:bg-signal-lime selection:text-ink">
+                  {msg.plaintext}
+                </div>
+              )}
 
               {/* Action Toolbar on hover/focus */}
               <div
