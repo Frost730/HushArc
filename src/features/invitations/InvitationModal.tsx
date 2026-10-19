@@ -9,6 +9,7 @@ interface InvitationModalProps {
   roomId: string;
   accessSecret?: string;
   encryptionKey?: string;
+  shortCode?: string;
   onClose: () => void;
   onEnterRoom: () => void;
 }
@@ -19,6 +20,7 @@ export const InvitationModal: React.FC<InvitationModalProps> = ({
   roomId,
   accessSecret,
   encryptionKey,
+  shortCode,
   onClose,
   onEnterRoom,
 }) => {
@@ -28,14 +30,16 @@ export const InvitationModal: React.FC<InvitationModalProps> = ({
 
   if (!isOpen) return null;
 
-  // Compute room code from props or parse from invitationUrl
-  let roomCode = '';
-  if (roomId && accessSecret && encryptionKey) {
-    roomCode = encodeRoomCode({ roomId, accessSecret, encryptionKey });
-  } else {
-    const parsed = parseInvitationInput(invitationUrl);
-    if (parsed) {
-      roomCode = encodeRoomCode(parsed);
+  // Use shortCode if available, otherwise compute legacy room code
+  let roomCode = shortCode || '';
+  if (!roomCode) {
+    if (roomId && accessSecret && encryptionKey) {
+      roomCode = encodeRoomCode({ roomId, accessSecret, encryptionKey });
+    } else {
+      const parsed = parseInvitationInput(invitationUrl);
+      if (parsed) {
+        roomCode = encodeRoomCode(parsed);
+      }
     }
   }
 
@@ -91,7 +95,7 @@ export const InvitationModal: React.FC<InvitationModalProps> = ({
           <div className="flex items-center gap-2">
             <HushArcMark size="sm" animate={true} />
             <h3 className="font-display font-semibold text-text-primary text-base">
-              Room Ready: {roomId.slice(0, 8)}
+              Room Ready: <span className="font-mono text-signal-lime">{shortCode || roomId.slice(0, 8)}</span>
             </h3>
           </div>
           <button
@@ -141,19 +145,19 @@ export const InvitationModal: React.FC<InvitationModalProps> = ({
             <div className="p-3 bg-ink rounded-xl border border-ink-border space-y-2 animate-fadeIn">
               <div className="flex items-center justify-between text-[11px] font-mono text-text-muted uppercase tracking-wider">
                 <span>Room Code</span>
-                <span className="text-[10px] text-sage-light lowercase">enter in "Join Room"</span>
+                <span className="text-[10px] text-sage-light lowercase">{shortCode ? '6-digit code' : 'enter in "Join Room"'}</span>
               </div>
               <div className="flex items-center gap-2">
                 <input
                   type="text"
                   readOnly
                   value={roomCode}
-                  className="w-full bg-ink-surface p-2 rounded-lg text-xs font-mono text-signal-lime outline-none truncate select-all border border-ink-border"
+                  className="w-full bg-ink-surface p-2.5 rounded-lg text-base font-mono font-bold tracking-widest text-signal-lime outline-none truncate select-all border border-ink-border text-center"
                 />
                 <button
                   type="button"
                   onClick={handleCopyCode}
-                  className="shrink-0 p-2 rounded-lg bg-ink-elevated hover:bg-ink-hover border border-ink-border text-text-primary hover:text-signal-lime transition-colors flex items-center gap-1.5 text-xs font-mono"
+                  className="shrink-0 p-2.5 rounded-lg bg-ink-elevated hover:bg-ink-hover border border-ink-border text-text-primary hover:text-signal-lime transition-colors flex items-center gap-1.5 text-xs font-mono"
                   title="Copy room code"
                 >
                   {copiedCode ? <Check className="w-3.5 h-3.5 text-signal-lime" /> : <Copy className="w-3.5 h-3.5" />}
@@ -161,7 +165,9 @@ export const InvitationModal: React.FC<InvitationModalProps> = ({
                 </button>
               </div>
               <p className="text-[11px] text-text-muted font-mono">
-                Give this code to anyone who already has the HushArc app open.
+                {shortCode
+                  ? 'Share this 6-digit code. Companions can type it directly into "Join with Code".'
+                  : 'Give this code to anyone who already has the HushArc app open.'}
               </p>
             </div>
           )}

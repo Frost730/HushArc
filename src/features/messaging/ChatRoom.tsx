@@ -16,6 +16,7 @@ interface ChatRoomProps {
   accessSecret: string;
   encryptionKey: string;
   nickname: string;
+  shortCode?: string;
   onExit: () => void;
 }
 
@@ -24,6 +25,7 @@ export const ChatRoom: React.FC<ChatRoomProps> = ({
   accessSecret,
   encryptionKey,
   nickname,
+  shortCode,
   onExit,
 }) => {
   const [replyTarget, setReplyTarget] = useState<DecryptedMessage | null>(null);
@@ -92,8 +94,8 @@ export const ChatRoom: React.FC<ChatRoomProps> = ({
               <span className="font-display font-bold text-sm tracking-tight text-text-primary">
                 HushArc
               </span>
-              <span className="text-[11px] font-mono text-text-muted bg-ink px-2 py-0.5 rounded border border-ink-border">
-                {roomId.slice(0, 8)}
+              <span className="text-[11px] font-mono text-signal-lime font-semibold bg-ink px-2 py-0.5 rounded border border-ink-border">
+                {shortCode || roomId.slice(0, 8)}
               </span>
             </div>
             <div className="flex items-center gap-2 mt-0.5">
@@ -170,7 +172,12 @@ export const ChatRoom: React.FC<ChatRoomProps> = ({
       {/* Main Conversation Canvas */}
       <main className="flex-1 flex flex-col overflow-hidden relative">
         {messages.length === 0 && participants.length <= 1 ? (
-          <EmptyRoomState invitationUrl={invitationUrl} isDirect={true} roomCode={roomCode} />
+          <EmptyRoomState
+            invitationUrl={invitationUrl}
+            isDirect={true}
+            roomCode={roomCode}
+            shortCode={shortCode}
+          />
         ) : (
           <MessageList
             messages={messages}
@@ -218,6 +225,7 @@ export const ChatRoom: React.FC<ChatRoomProps> = ({
         roomId={roomId}
         accessSecret={accessSecret}
         encryptionKey={encryptionKey}
+        shortCode={shortCode}
         onEnterRoom={() => setShowInviteModal(false)}
       />
     </div>

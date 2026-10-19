@@ -12,7 +12,8 @@ interface CreateRoomModalProps {
     roomId: string,
     accessSecret: string,
     encryptionKey: string,
-    nickname: string
+    nickname: string,
+    shortCode?: string
   ) => void;
 }
 
@@ -53,7 +54,7 @@ export const CreateRoomModal: React.FC<CreateRoomModalProps> = ({
         throw new Error('Failed to create ephemeral room. Please try again.');
       }
 
-      const { roomId, accessSecret } = await res.json();
+      const { roomId, accessSecret, shortCode } = await res.json();
 
       // 2. Independently generate symmetric room key in browser
       const encryptionKey = await generateSymmetricRoomKey();
@@ -65,7 +66,7 @@ export const CreateRoomModal: React.FC<CreateRoomModalProps> = ({
         encryptionKey,
       });
 
-      onRoomCreated(invitationUrl, roomId, accessSecret, encryptionKey, nickname);
+      onRoomCreated(invitationUrl, roomId, accessSecret, encryptionKey, nickname, shortCode);
     } catch (err: any) {
       setError(err?.message || 'Error initializing room');
     } finally {

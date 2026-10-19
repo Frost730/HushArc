@@ -14,6 +14,7 @@ export class EphemeralRoomManager {
   private rooms = new Map<string, Room>();
   private sockets = new Map<WebSocket, ConnectedSocket>();
   private participantSockets = new Map<string, WebSocket>(); // participantId -> WebSocket
+  private shortCodeToRoom = new Map<string, { roomId: string; accessSecret: string; shortCode: string }>();
 
   private readonly idleTimeoutMs: number;
   private cleanupInterval: NodeJS.Timeout | null = null;
@@ -28,20 +29,51 @@ export class EphemeralRoomManager {
   }
 
   /**
-   * Creates a new ephemeral room with an access secret.
+   * Normalizes short codes for lookup (strips hyphens/spaces and standardizes casing).
+   */
+  private normalizeShortCode(code: string): string {
+    return code.trim().replace(/[^0-9A-Za-z]/g, '').toUpperCase();
+  }
+
+  /**
+   * Generates a clean, human-friendly 6-digit room code (e.g. 482-915).
+   */
+  private generateUniqueShortCode(): string {
+    for (let attempts = 0; attempts < 200; attempts++) {
+      const num = Math.floor(100000 + Math.random() * 900000);
+      const code = `${String(num).slice(0, 3)}-${String(num).slice(3)}`;
+      const normalized = this.normalizeShortCode(code);
+      if (!this.shortCodeToRoom.has(normalized)) {
+        return code;
+      }
+    }
+    // Fallback alphanumeric
+    const alpha = '23456789ABCDEFGHJKLMNPQRSTUVWXYZ';
+    let code = '';
+    for (let i = 0; i < 6; i++) {
+      code += alpha[Math.floor(Math.random() * alpha.length)];
+    }
+    return `${code.slice(0, 3)}-${code.slice(3)}`;
+  }
+
+  /**
+   * Creates a new ephemeral room with an access secret and easy-to-type short code.
    * Note: The encryption secret is NEVER received or handled by the server;
-   * it stays in the client's URL fragment!
+   * it stays in the client's URL fragment or is exchanged via sealed box!
    */
   public createRoom(options?: { maxParticipants?: number; isDirect?: boolean }): {
     roomId: string;
     accessSecret: string;
+    shortCode: string;
   } {
     const roomId = generateSecureToken(16); // 128-bit URL-safe random string
     const accessSecret = generateSecureToken(32); // 256-bit access capability
     const accessSecretHash = hashAccessSecret(accessSecret);
+    const shortCode = this.generateUniqueShortCode();
 
     const room: Room = {
       id: roomId,
+      shortCode,
       accessSecretHash,
       createdAt: Date.now(),
       lastActivityAt: Date.now(),
@@ -52,7 +84,26 @@ export class EphemeralRoomManager {
     };
 
     this.rooms.set(roomId, room);
-    return { roomId, accessSecret };
+    this.shortCodeToRoom.set(this.normalizeShortCode(shortCode), { roomId, accessSecret, shortCode });
+    return { roomId, accessSecret, shortCode };
+  }
+
+  /**
+   * Resolves a human-entered short code to its roomId and accessSecret.
+   */
+  public resolveShortCode(code: string): { roomId: string; accessSecret: string; shortCode: string } | null {
+    if (!code) return null;
+    const normalized = this.normalizeShortCode(code);
+    const entry = this.shortCodeToRoom.get(normalized);
+    if (!entry) return null;
+
+    const room = this.rooms.get(entry.roomId);
+    if (!room) {
+      this.shortCodeToRoom.delete(normalized);
+      return null;
+    }
+
+    return entry;
   }
 
   /**
@@ -88,22 +139,19 @@ export class EphemeralRoomManager {
       accessSecret: string;
     }
   ): { success: boolean; room?: Room; reason?: string } {
-    const validation = this.validateRoomAccess(params.roomId, params.accessSecret);
+    const { roomId, participantId, nickname, publicKey, accessSecret } = params;
+
+    const validation = this.validateRoomAccess(roomId, accessSecret);
     if (!validation.valid) {
       return { success: false, reason: validation.reason };
     }
 
-    const room = this.rooms.get(params.roomId)!;
-
-    // Check if participantId is already taken in this room
-    if (room.participants.has(params.participantId)) {
-      return { success: false, reason: 'Participant identifier already active in room.' };
-    }
+    const room = this.rooms.get(roomId)!;
 
     const participant: Participant = {
-      id: params.participantId,
-      nickname: params.nickname,
-      publicKey: params.publicKey,
+      id: participantId,
+      nickname,
+      publicKey,
       joinedAt: Date.now(),
       lastPing: Date.now(),
     };
@@ -111,10 +159,9 @@ export class EphemeralRoomManager {
     room.participants.set(participant.id, participant);
     room.lastActivityAt = Date.now();
 
-    // Track active socket association
     this.sockets.set(socket, {
       socket,
-      roomId: room.id,
+      roomId,
       participantId: participant.id,
       isAlive: true,
     });
@@ -124,23 +171,28 @@ export class EphemeralRoomManager {
   }
 
   /**
-   * Returns current participant info for a socket.
+   * Retrieve participant socket by ID.
    */
-  public getSocketInfo(socket: WebSocket): ConnectedSocket | undefined {
-    return this.sockets.get(socket);
+  public getParticipantSocket(participantId: string): WebSocket | undefined {
+    return this.participantSockets.get(participantId);
   }
 
   /**
-   * Returns a room by ID.
+   * Send event to an individual participant.
    */
-  public getRoom(roomId: string): Room | undefined {
-    return this.rooms.get(roomId);
+  public sendToParticipant(participantId: string, event: ServerEvent): boolean {
+    const sock = this.participantSockets.get(participantId);
+    if (sock && sock.readyState === 1) { // WebSocket.OPEN
+      sock.send(JSON.stringify(event));
+      return true;
+    }
+    return false;
   }
 
   /**
-   * Broadcast an event to all participants in a room, optionally excluding sender.
+   * Broadcast an event to all participants in a room.
    */
-  public broadcastToRoom(roomId: string, event: ServerEvent, excludeParticipantId?: string): number {
+  public broadcastToRoom(roomId: string, event: ServerEvent, exceptParticipantId?: string): number {
     const room = this.rooms.get(roomId);
     if (!room) return 0;
 
@@ -149,11 +201,12 @@ export class EphemeralRoomManager {
     let deliveredCount = 0;
 
     for (const [pId] of room.participants) {
-      if (excludeParticipantId && pId === excludeParticipantId) {
+      if (exceptParticipantId && pId === exceptParticipantId) {
         continue;
       }
+
       const sock = this.participantSockets.get(pId);
-      if (sock && sock.readyState === 1 /* WebSocket.OPEN */) {
+      if (sock && sock.readyState === 1) { // WebSocket.OPEN
         sock.send(payload);
         deliveredCount++;
       }
@@ -163,21 +216,30 @@ export class EphemeralRoomManager {
   }
 
   /**
-   * Send an event directly to a specific participant.
+   * Get room metadata (never exposes private participant data or secrets).
    */
-  public sendToParticipant(participantId: string, event: ServerEvent): boolean {
-    const sock = this.participantSockets.get(participantId);
-    if (sock && sock.readyState === 1 /* WebSocket.OPEN */) {
-      sock.send(JSON.stringify(event));
-      return true;
-    }
-    return false;
+  public getRoom(roomId: string): Room | undefined {
+    return this.rooms.get(roomId);
   }
 
   /**
-   * Remove a participant from their room (e.g. voluntary leave or socket closed).
+   * Get metadata for a connected socket.
    */
-  public leaveRoom(socket: WebSocket, reason = 'Participant left'): void {
+  public getSocketInfo(socket: WebSocket): ConnectedSocket | undefined {
+    return this.sockets.get(socket);
+  }
+
+  /**
+   * Leave room / remove socket (alias for removeSocket).
+   */
+  public leaveRoom(socket: WebSocket, reason = 'Disconnected'): void {
+    this.removeSocket(socket, reason);
+  }
+
+  /**
+   * Remove a socket and its participant from the room.
+   */
+  public removeSocket(socket: WebSocket, reason = 'Disconnected'): void {
     const info = this.sockets.get(socket);
     if (!info) return;
 
@@ -191,11 +253,11 @@ export class EphemeralRoomManager {
     room.participants.delete(participantId);
     room.lastActivityAt = Date.now();
 
-    // If room is now empty, destroy it immediately!
+    // If room is now empty, destroy it immediately per Strict Ephemeral Policy
     if (room.participants.size === 0) {
-      this.destroyRoom(roomId, 'All participants left the room.');
+      this.destroyRoom(roomId, 'All participants departed.');
     } else {
-      // Notify remaining members
+      // Notify remaining room participants
       this.broadcastToRoom(roomId, {
         type: 'participant_left',
         participantId,
@@ -217,6 +279,9 @@ export class EphemeralRoomManager {
   public destroyRoom(roomId: string, reason: string): void {
     const room = this.rooms.get(roomId);
     if (!room) return;
+
+    // Delete short code mapping
+    this.shortCodeToRoom.delete(this.normalizeShortCode(room.shortCode));
 
     // Notify any remaining sockets
     const endEvent: ServerEvent = { type: 'room_ended', reason };
@@ -285,6 +350,7 @@ export class EphemeralRoomManager {
     }
 
     this.rooms.clear();
+    this.shortCodeToRoom.clear();
     this.sockets.clear();
     this.participantSockets.clear();
   }

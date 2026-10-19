@@ -60,6 +60,8 @@ export function useHushArcRoom(options: UseHushArcRoomOptions) {
   const [myParticipantId, setMyParticipantId] = useState<string>('');
   const [myNickname, setMyNickname] = useState<string>(initialNickname || 'Silent Orbit');
 
+  const [hasKey, setHasKey] = useState<boolean>(Boolean(initialRoomKey));
+
   // Cryptographic and callback references (strictly kept in JS closure memory)
   const roomKeyRef = useRef<string>(initialRoomKey);
   const keyPairRef = useRef<EphemeralKeyPair | null>(null);
@@ -160,7 +162,44 @@ export function useHushArcRoom(options: UseHushArcRoomOptions) {
                   if (prev.some((p) => p.id === data.participant.id)) return prev;
                   return [...prev, data.participant];
                 });
+
+                // Automatic peer key exchange: if we possess the room key, immediately seal and relay it to the joining peer
+                if (roomKeyRef.current && wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+                  sealRoomKeyForPeer(roomKeyRef.current, data.participant.publicKey)
+                    .then((sealedKey) => {
+                      if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+                        wsRef.current.send(
+                          JSON.stringify({
+                            type: 'key_exchange',
+                            roomId,
+                            recipientId: data.participant.id,
+                            sealedKey,
+                          })
+                        );
+                      }
+                    })
+                    .catch((err) => {
+                      console.error('[HushArc] Failed to seal room key for peer:', err);
+                    });
+                }
                 break;
+
+              case 'key_exchange_relayed': {
+                if (keyPairRef.current) {
+                  try {
+                    const unsealedKey = await unsealRoomKeyFromPeer(
+                      data.sealedKey,
+                      keyPairRef.current.publicKey,
+                      keyPairRef.current.privateKey
+                    );
+                    roomKeyRef.current = unsealedKey;
+                    setHasKey(true);
+                  } catch (err) {
+                    console.error('[HushArc] Failed to unseal room key from peer:', err);
+                  }
+                }
+                break;
+              }
 
               case 'participant_left':
                 setParticipants((prev) => prev.filter((p) => p.id !== data.participantId));
@@ -674,7 +713,7 @@ export function useHushArcRoom(options: UseHushArcRoomOptions) {
     rotateRoomKey,
     leaveRoom,
     endRoom,
-    hasKey: Boolean(roomKeyRef.current),
+    hasKey: hasKey || Boolean(roomKeyRef.current),
     myPublicKey: keyPairRef.current?.publicKey,
   };
 }

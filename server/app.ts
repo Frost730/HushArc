@@ -36,20 +36,32 @@ export function createApp(roomManager: EphemeralRoomManager): express.Express {
     }
 
     const { maxParticipants, isDirect } = parseResult.data;
-    const { roomId, accessSecret } = roomManager.createRoom({
+    const { roomId, accessSecret, shortCode } = roomManager.createRoom({
       maxParticipants,
       isDirect,
     });
 
-    // Return the room ID and access secret.
+    // Return the room ID, access secret, and easy-to-type shortCode.
     // NOTE: The client independently generates the E2E encryption key locally in the browser!
     res.status(201).json({
       roomId,
       accessSecret,
+      shortCode,
       maxParticipants,
       isDirect,
       expiresInMinutes: 60,
     });
+  });
+
+  // Resolve easy-to-type short code to roomId and accessSecret
+  app.get('/api/rooms/resolve/:code', expressRateLimit, (req, res) => {
+    const code = req.params.code;
+    const resolved = roomManager.resolveShortCode(code);
+    if (!resolved) {
+      res.status(404).json({ error: 'Room not found or has expired.' });
+      return;
+    }
+    res.status(200).json(resolved);
   });
 
   // Serve static assets in production

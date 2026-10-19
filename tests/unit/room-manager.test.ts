@@ -13,17 +13,29 @@ describe('EphemeralRoomManager (In-Memory)', () => {
   });
 
   it('creates an ephemeral room with unique ID and independent access secret', () => {
-    const { roomId, accessSecret } = roomManager.createRoom();
+    const { roomId, accessSecret, shortCode } = roomManager.createRoom();
 
     expect(roomId).toBeDefined();
     expect(accessSecret).toBeDefined();
+    expect(shortCode).toBeDefined();
+    expect(shortCode).toMatch(/^[0-9A-Z]{3}-[0-9A-Z]{3}$/);
     expect(roomId).not.toBe(accessSecret);
     expect(roomId.length).toBeGreaterThanOrEqual(16);
 
     const room = roomManager.getRoom(roomId);
     expect(room).toBeDefined();
     expect(room?.id).toBe(roomId);
+    expect(room?.shortCode).toBe(shortCode);
     expect(room?.participants.size).toBe(0);
+
+    const resolved = roomManager.resolveShortCode(shortCode);
+    expect(resolved).toBeDefined();
+    expect(resolved?.roomId).toBe(roomId);
+    expect(resolved?.accessSecret).toBe(accessSecret);
+
+    // Resolves even without hyphens or lowercase
+    const resolvedNormalized = roomManager.resolveShortCode(shortCode.replace('-', '').toLowerCase());
+    expect(resolvedNormalized?.roomId).toBe(roomId);
   });
 
   it('validates correct access secret and rejects wrong access secret', () => {

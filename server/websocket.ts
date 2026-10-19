@@ -27,7 +27,7 @@ export function setupWebSocket(httpServer: Server, roomManager: EphemeralRoomMan
 
       if (!socketInfo.isAlive) {
         // Did not respond to ping
-        roomManager.leaveRoom(ws, 'Connection timed out');
+        roomManager.removeSocket(ws, 'Connection timed out');
         ws.terminate();
         return;
       }
@@ -266,7 +266,7 @@ export function setupWebSocket(httpServer: Server, roomManager: EphemeralRoomMan
         // Sender has generated a new epoch key, encrypted each copy with the recipient's public key
         roomManager.updateRoomEpoch(senderInfo.roomId, event.newEpoch);
 
-        for (const [targetParticipantId, encryptedBundle] of Object.entries(event.encryptedKeys)) {
+        for (const [targetParticipantId, encryptedBundle] of Object.entries(event.encryptedKeys) as [string, { nonce: string; ciphertext: string }][]) {
           if (targetParticipantId === senderInfo.participantId) continue;
           roomManager.sendToParticipant(targetParticipantId, {
             type: 'key_rotation_relayed',
@@ -278,9 +278,19 @@ export function setupWebSocket(httpServer: Server, roomManager: EphemeralRoomMan
         return;
       }
 
+      // Handle direct peer-to-peer sealed key exchange (for short code joiners)
+      if (event.type === 'key_exchange') {
+        roomManager.sendToParticipant(event.recipientId, {
+          type: 'key_exchange_relayed',
+          senderId: senderInfo.participantId,
+          sealedKey: event.sealedKey,
+        });
+        return;
+      }
+
       // Handle explicit leave
       if (event.type === 'leave') {
-        roomManager.leaveRoom(ws, 'Participant departed voluntarily');
+        roomManager.removeSocket(ws, 'Participant departed voluntarily');
         ws.close(1000, 'Left room');
         return;
       }
@@ -293,11 +303,11 @@ export function setupWebSocket(httpServer: Server, roomManager: EphemeralRoomMan
     });
 
     ws.on('close', () => {
-      roomManager.leaveRoom(ws, 'Disconnected');
+      roomManager.removeSocket(ws, 'Disconnected');
     });
 
     ws.on('error', () => {
-      roomManager.leaveRoom(ws, 'Socket error');
+      roomManager.removeSocket(ws, 'Socket error');
     });
   });
 

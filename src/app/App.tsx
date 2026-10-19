@@ -12,6 +12,7 @@ interface ActiveRoomState {
   accessSecret: string;
   encryptionKey: string;
   nickname: string;
+  shortCode?: string;
 }
 
 export const App: React.FC = () => {
@@ -24,6 +25,7 @@ export const App: React.FC = () => {
     accessSecret: string;
     encryptionKey: string;
     nickname: string;
+    shortCode?: string;
   } | null>(null);
 
   // Auto-detect invitation URL on page load (e.g. /r/:roomId#access=...&key=...)
@@ -69,7 +71,8 @@ export const App: React.FC = () => {
     roomId: string,
     accessSecret: string,
     encryptionKey: string,
-    nickname: string
+    nickname: string,
+    shortCode?: string
   ) => {
     setShowCreateModal(false);
     setInvitationModalData({
@@ -78,6 +81,7 @@ export const App: React.FC = () => {
       accessSecret,
       encryptionKey,
       nickname,
+      shortCode,
     });
   };
 
@@ -88,6 +92,7 @@ export const App: React.FC = () => {
       accessSecret: invitationModalData.accessSecret,
       encryptionKey: invitationModalData.encryptionKey,
       nickname: invitationModalData.nickname,
+      shortCode: invitationModalData.shortCode,
     });
     setInvitationModalData(null);
   };
@@ -96,7 +101,8 @@ export const App: React.FC = () => {
     roomId: string,
     accessSecret: string,
     encryptionKey: string,
-    nickname: string
+    nickname: string,
+    shortCode?: string
   ) => {
     setShowJoinModal(false);
     setActiveRoom({
@@ -104,6 +110,7 @@ export const App: React.FC = () => {
       accessSecret,
       encryptionKey,
       nickname,
+      shortCode,
     });
   };
 
@@ -129,6 +136,7 @@ export const App: React.FC = () => {
           accessSecret={activeRoom.accessSecret}
           encryptionKey={activeRoom.encryptionKey}
           nickname={activeRoom.nickname}
+          shortCode={activeRoom.shortCode}
           onExit={handleExitRoom}
         />
       ) : (
@@ -161,6 +169,7 @@ export const App: React.FC = () => {
           roomId={invitationModalData.roomId}
           accessSecret={invitationModalData.accessSecret}
           encryptionKey={invitationModalData.encryptionKey}
+          shortCode={invitationModalData.shortCode}
           onClose={() => setInvitationModalData(null)}
           onEnterRoom={handleEnterRoomFromInvite}
         />

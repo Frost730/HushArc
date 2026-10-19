@@ -13,6 +13,7 @@ export interface Participant {
 
 export interface Room {
   id: string; // Random room ID
+  shortCode: string; // Human-friendly 6-digit room code (e.g. 482-915)
   accessSecretHash: string; // Hash of the room's access secret (never plaintext, never encryption key)
   createdAt: number;
   lastActivityAt: number;
@@ -82,6 +83,12 @@ export type ClientEvent =
       roomId: string;
     }
   | {
+      type: 'key_exchange';
+      roomId: string;
+      recipientId: string;
+      sealedKey: string;
+    }
+  | {
       type: 'ping';
     };
 
@@ -93,6 +100,11 @@ export type ServerEvent =
       participantId: string;
       epoch: number;
       participants: Array<{ id: string; nickname: string; publicKey: string; joinedAt: number }>;
+    }
+  | {
+      type: 'key_exchange_relayed';
+      senderId: string;
+      sealedKey: string;
     }
   | {
       type: 'join_rejected';

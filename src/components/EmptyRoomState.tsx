@@ -7,18 +7,20 @@ interface EmptyRoomStateProps {
   invitationUrl: string;
   isDirect: boolean;
   roomCode?: string;
+  shortCode?: string;
 }
 
 export const EmptyRoomState: React.FC<EmptyRoomStateProps> = ({
   invitationUrl,
   isDirect,
   roomCode: propRoomCode,
+  shortCode,
 }) => {
   const [copiedLink, setCopiedLink] = useState(false);
   const [copiedCode, setCopiedCode] = useState(false);
 
-  // Compute room code if not directly supplied
-  let roomCode = propRoomCode || '';
+  // Use shortCode if available, otherwise compute/fallback to roomCode
+  let roomCode = shortCode || propRoomCode || '';
   if (!roomCode) {
     const parsed = parseInvitationInput(invitationUrl);
     if (parsed) {
@@ -90,14 +92,14 @@ export const EmptyRoomState: React.FC<EmptyRoomStateProps> = ({
                 <KeyRound className="w-3.5 h-3.5 text-signal-lime" />
                 <span>Join with Code</span>
               </span>
-              <span className="text-[10px] text-sage-light lowercase">quick code</span>
+              <span className="text-[10px] text-sage-light lowercase">{shortCode ? '6-digit code' : 'quick code'}</span>
             </div>
             <div className="flex items-center gap-2">
               <input
                 type="text"
                 readOnly
                 value={roomCode}
-                className="w-full bg-ink-surface p-2 rounded-lg text-xs font-mono text-signal-lime outline-none truncate select-all border border-ink-border"
+                className="w-full bg-ink-surface p-2 rounded-lg text-sm font-mono font-bold tracking-wider text-signal-lime outline-none truncate select-all border border-ink-border text-center sm:text-left"
               />
               <button
                 type="button"

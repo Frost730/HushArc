@@ -76,6 +76,13 @@ export const EndRoomEventSchema = z.object({
   roomId: z.string().min(8).max(64),
 });
 
+export const KeyExchangeEventSchema = z.object({
+  type: z.literal('key_exchange'),
+  roomId: z.string().min(8).max(64),
+  recipientId: z.string().min(8).max(64),
+  sealedKey: z.string().min(1).max(2048),
+});
+
 export const PingEventSchema = z.object({
   type: z.literal('ping'),
 });
@@ -87,6 +94,7 @@ export const ClientEventSchema = z.discriminatedUnion('type', [
   TypingEventSchema,
   KeyRotationEpochEventSchema,
   AttachmentChunkEventSchema,
+  KeyExchangeEventSchema,
   LeaveEventSchema,
   EndRoomEventSchema,
   PingEventSchema,
