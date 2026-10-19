@@ -32,6 +32,14 @@ export const ChatRoom: React.FC<ChatRoomProps> = ({
 
   const invitationUrl = buildInvitationUrl({ roomId, accessSecret, encryptionKey });
 
+  const handleRoomEnded = React.useCallback(
+    (_reason: string) => {
+      // Room ended, exit back to welcome screen cleanly
+      setTimeout(onExit, 2500);
+    },
+    [onExit]
+  );
+
   const {
     connectionStatus,
     error,
@@ -53,10 +61,7 @@ export const ChatRoom: React.FC<ChatRoomProps> = ({
     accessSecret,
     initialRoomKey: encryptionKey,
     initialNickname: nickname,
-    onRoomEnded: (_reason) => {
-      // Room ended, exit back to welcome screen cleanly
-      setTimeout(onExit, 2500);
-    },
+    onRoomEnded: handleRoomEnded,
   });
 
   const handleLeave = () => {

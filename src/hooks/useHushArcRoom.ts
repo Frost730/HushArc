@@ -47,13 +47,31 @@ export function useHushArcRoom(options: UseHushArcRoomOptions) {
   const [myParticipantId, setMyParticipantId] = useState<string>('');
   const [myNickname, setMyNickname] = useState<string>(initialNickname || 'Silent Orbit');
 
-  // Cryptographic state references (strictly kept in JS closure memory)
+  // Cryptographic and callback references (strictly kept in JS closure memory)
   const roomKeyRef = useRef<string>(initialRoomKey);
   const keyPairRef = useRef<EphemeralKeyPair | null>(null);
   const wsRef = useRef<WebSocket | null>(null);
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Initialize ephemeral cryptography and connect WebSocket
+  const onRoomEndedRef = useRef(onRoomEnded);
+  useEffect(() => {
+    onRoomEndedRef.current = onRoomEnded;
+  }, [onRoomEnded]);
+
+  const initialNicknameRef = useRef(initialNickname || 'Silent Orbit');
+  useEffect(() => {
+    if (initialNickname) {
+      initialNicknameRef.current = initialNickname;
+    }
+  }, [initialNickname]);
+
+  useEffect(() => {
+    if (initialRoomKey) {
+      roomKeyRef.current = initialRoomKey;
+    }
+  }, [initialRoomKey]);
+
+  // Initialize ephemeral cryptography and connect WebSocket ONCE per room session
   useEffect(() => {
     let isCancelled = false;
 
@@ -82,7 +100,7 @@ export function useHushArcRoom(options: UseHushArcRoomOptions) {
             type: 'join',
             roomId,
             participantId: pId,
-            nickname: initialNickname || 'Silent Orbit',
+            nickname: initialNicknameRef.current,
             publicKey: pair.publicKey,
             accessSecret,
           };
@@ -105,7 +123,7 @@ export function useHushArcRoom(options: UseHushArcRoomOptions) {
               case 'join_rejected':
                 setConnectionStatus('disconnected');
                 setError(data.reason);
-                if (onRoomEnded) onRoomEnded(data.reason);
+                if (onRoomEndedRef.current) onRoomEndedRef.current(data.reason);
                 break;
 
               case 'participant_joined':
@@ -216,7 +234,7 @@ export function useHushArcRoom(options: UseHushArcRoomOptions) {
               case 'room_ended':
                 setConnectionStatus('disconnected');
                 setError(data.reason);
-                if (onRoomEnded) onRoomEnded(data.reason);
+                if (onRoomEndedRef.current) onRoomEndedRef.current(data.reason);
                 break;
 
               case 'error':
@@ -265,7 +283,7 @@ export function useHushArcRoom(options: UseHushArcRoomOptions) {
       keyPairRef.current = null;
       purgeLocalSession();
     };
-  }, [roomId, accessSecret, initialNickname, onRoomEnded]);
+  }, [roomId, accessSecret]);
 
   // Send an end-to-end encrypted message
   const sendMessage = useCallback(

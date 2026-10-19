@@ -97,7 +97,7 @@ export const App: React.FC = () => {
     });
   };
 
-  const handleExitRoom = () => {
+  const handleExitRoom = React.useCallback(() => {
     purgeLocalSession();
     setActiveRoom(null);
     try {
@@ -105,7 +105,7 @@ export const App: React.FC = () => {
     } catch {
       // ignore
     }
-  };
+  }, []);
 
   return (
     <div className="relative min-h-screen bg-ink text-text-primary overflow-x-hidden font-sans">
