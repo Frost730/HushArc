@@ -5,7 +5,7 @@ import { CreateRoomModal } from '../features/rooms/CreateRoomModal.js';
 import { JoinRoomModal } from '../features/rooms/JoinRoomModal.js';
 import { InvitationModal } from '../features/invitations/InvitationModal.js';
 import { ChatRoom } from '../features/messaging/ChatRoom.js';
-import { extractAndCleanInvitationFragment, purgeLocalSession } from '../lib/ephemeral-session/session.js';
+import { extractAndCleanInvitationFragment, generateRandomNickname, purgeLocalSession } from '../lib/ephemeral-session/session.js';
 
 interface ActiveRoomState {
   roomId: string;
@@ -38,10 +38,20 @@ export const App: React.FC = () => {
       const { accessSecret, encryptionKey } = extractAndCleanInvitationFragment();
 
       if (accessSecret && encryptionKey) {
-        setJoinModalParams({
+        // User clicked a shared room link — directly join the conversation!
+        const autoMoniker = generateRandomNickname();
+        setActiveRoom({
           roomId: extractedRoomId,
           accessSecret,
           encryptionKey,
+          nickname: autoMoniker,
+        });
+      } else {
+        // Opened without access keys — prompt join modal so they can paste the code
+        setJoinModalParams({
+          roomId: extractedRoomId,
+          accessSecret: '',
+          encryptionKey: '',
         });
         setShowJoinModal(true);
       }

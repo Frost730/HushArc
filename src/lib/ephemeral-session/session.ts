@@ -112,18 +112,23 @@ export function extractAndCleanInvitationFragment(): {
   }
 
   const hash = window.location.hash.replace(/^#/, '');
-  if (!hash) {
-    return { accessSecret: null, encryptionKey: null };
+  const searchParams = new URLSearchParams(window.location.search);
+  let accessSecret: string | null = null;
+  let encryptionKey: string | null = null;
+
+  if (hash) {
+    const hashParams = new URLSearchParams(hash);
+    accessSecret = hashParams.get('access');
+    encryptionKey = hashParams.get('key');
   }
 
-  const params = new URLSearchParams(hash);
-  const accessSecret = params.get('access');
-  const encryptionKey = params.get('key');
+  // Fallback to search parameters if not found in hash
+  if (!accessSecret) accessSecret = searchParams.get('access');
+  if (!encryptionKey) encryptionKey = searchParams.get('key');
 
-  // CRITICAL PRIVACY ACTION: Immediately erase the fragment from URL history
+  // CRITICAL PRIVACY ACTION: Immediately erase fragment and sensitive search params from URL history
   try {
-    const cleanUrl = window.location.pathname + window.location.search;
-    window.history.replaceState(null, '', cleanUrl);
+    window.history.replaceState(null, '', window.location.pathname);
   } catch {
     // Best-effort
   }

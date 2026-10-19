@@ -34,6 +34,20 @@ export const JoinRoomModal: React.FC<JoinRoomModalProps> = ({
   const [nickname, setNickname] = useState(() => generateRandomNickname());
   const [error, setError] = useState<string | null>(null);
 
+  React.useEffect(() => {
+    if (initialRoomId && initialAccessSecret && initialEncryptionKey) {
+      setInputVal(
+        encodeRoomCode({
+          roomId: initialRoomId,
+          accessSecret: initialAccessSecret,
+          encryptionKey: initialEncryptionKey,
+        })
+      );
+    } else if (initialRoomId) {
+      setInputVal(initialRoomId);
+    }
+  }, [initialRoomId, initialAccessSecret, initialEncryptionKey]);
+
   if (!isOpen) return null;
 
   const handleRandomizeNickname = () => {
