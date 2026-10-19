@@ -149,6 +149,8 @@ export const App: React.FC = () => {
           isOpen={Boolean(invitationModalData)}
           invitationUrl={invitationModalData.url}
           roomId={invitationModalData.roomId}
+          accessSecret={invitationModalData.accessSecret}
+          encryptionKey={invitationModalData.encryptionKey}
           onClose={() => setInvitationModalData(null)}
           onEnterRoom={handleEnterRoomFromInvite}
         />

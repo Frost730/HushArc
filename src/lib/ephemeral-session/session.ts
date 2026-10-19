@@ -1,8 +1,101 @@
-
 export interface RoomInvitationParams {
   roomId: string;
   accessSecret: string;
   encryptionKey: string;
+}
+
+function toBase64Url(str: string): string {
+  let base64: string;
+  if (typeof Buffer !== 'undefined') {
+    base64 = Buffer.from(str, 'utf-8').toString('base64');
+  } else {
+    base64 = btoa(str);
+  }
+  return base64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+
+function fromBase64Url(base64Url: string): string {
+  let base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+  while (base64.length % 4 !== 0) {
+    base64 += '=';
+  }
+  if (typeof Buffer !== 'undefined') {
+    return Buffer.from(base64, 'base64').toString('utf-8');
+  } else {
+    return atob(base64);
+  }
+}
+
+/**
+ * Encodes room parameters into a portable, compact join code (e.g. HUSH-...)
+ */
+export function encodeRoomCode(params: RoomInvitationParams): string {
+  const payload = `${params.roomId}:${params.accessSecret}:${params.encryptionKey}`;
+  return `HUSH-${toBase64Url(payload)}`;
+}
+
+/**
+ * Decodes a room join code into its components.
+ */
+export function decodeRoomCode(rawCode: string): RoomInvitationParams | null {
+  try {
+    let clean = rawCode.trim();
+    if (clean.toUpperCase().startsWith('HUSH-')) {
+      clean = clean.slice(5);
+    }
+    const decoded = fromBase64Url(clean);
+    const parts = decoded.split(':');
+    if (parts.length === 3 && parts[0] && parts[1] && parts[2]) {
+      return {
+        roomId: parts[0],
+        accessSecret: parts[1],
+        encryptionKey: parts[2],
+      };
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Parses either a full invitation URL, a relative path, or a HUSH-... Room Code.
+ */
+export function parseInvitationInput(input: string): RoomInvitationParams | null {
+  const trimmed = input.trim();
+  if (!trimmed) return null;
+
+  // 1. Try decoding as room code
+  const codeResult = decodeRoomCode(trimmed);
+  if (codeResult) return codeResult;
+
+  // 2. Try parsing as invitation URL
+  try {
+    let urlStr = trimmed;
+    if (!urlStr.startsWith('http://') && !urlStr.startsWith('https://')) {
+      urlStr = 'https://dummy.local' + (urlStr.startsWith('/') ? '' : '/') + urlStr;
+    }
+    const parsedUrl = new URL(urlStr);
+    const pathParts = parsedUrl.pathname.split('/').filter(Boolean);
+    let roomId = '';
+    if (pathParts[0] === 'r' && pathParts[1]) {
+      roomId = pathParts[1];
+    } else if (pathParts[0] && pathParts[0] !== 'r') {
+      roomId = pathParts[0];
+    }
+
+    const hashParams = new URLSearchParams(parsedUrl.hash.replace(/^#/, ''));
+    let accessSecret = hashParams.get('access') || parsedUrl.searchParams.get('access') || '';
+    let encryptionKey = hashParams.get('key') || parsedUrl.searchParams.get('key') || '';
+
+    if (roomId && accessSecret && encryptionKey) {
+      return { roomId, accessSecret, encryptionKey };
+    }
+  } catch {
+    // Ignore URL parse error
+  }
+
+  return null;
 }
 
 /**

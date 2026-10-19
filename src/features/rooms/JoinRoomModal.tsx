@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
-import { X, KeyRound, Sparkles, ArrowRight, ShieldAlert } from 'lucide-react';
+import { X, KeyRound, Sparkles, ArrowRight, ShieldAlert, Link as LinkIcon, Hash } from 'lucide-react';
 import { HushArcMark } from '../../components/HushArcMark.js';
-import { generateRandomNickname } from '../../lib/ephemeral-session/session.js';
+import { generateRandomNickname, parseInvitationInput, encodeRoomCode } from '../../lib/ephemeral-session/session.js';
 
 interface JoinRoomModalProps {
   isOpen: boolean;
@@ -20,11 +20,17 @@ export const JoinRoomModal: React.FC<JoinRoomModalProps> = ({
   initialAccessSecret = '',
   initialEncryptionKey = '',
 }) => {
-  const [rawInput, setRawInput] = useState(
-    initialRoomId && initialAccessSecret && initialEncryptionKey
-      ? `/r/${initialRoomId}#access=${initialAccessSecret}&key=${initialEncryptionKey}`
-      : ''
-  );
+  const [activeTab, setActiveTab] = useState<'code' | 'link'>('code');
+  const [inputVal, setInputVal] = useState(() => {
+    if (initialRoomId && initialAccessSecret && initialEncryptionKey) {
+      return encodeRoomCode({
+        roomId: initialRoomId,
+        accessSecret: initialAccessSecret,
+        encryptionKey: initialEncryptionKey,
+      });
+    }
+    return '';
+  });
   const [nickname, setNickname] = useState(() => generateRandomNickname());
   const [error, setError] = useState<string | null>(null);
 
@@ -38,47 +44,23 @@ export const JoinRoomModal: React.FC<JoinRoomModalProps> = ({
     e.preventDefault();
     setError(null);
 
-    const input = rawInput.trim();
+    const input = inputVal.trim();
     if (!input) {
-      setError('Please provide an invitation link or parameters');
+      setError(activeTab === 'code' ? 'Please enter a room code.' : 'Please enter an invitation link.');
       return;
     }
 
-    try {
-      // Check if it's already full URL or relative path
-      let urlStr = input;
-      if (!urlStr.startsWith('http://') && !urlStr.startsWith('https://')) {
-        urlStr = 'https://dummy.local' + (urlStr.startsWith('/') ? '' : '/') + urlStr;
-      }
-
-      const parsedUrl = new URL(urlStr);
-      // Path format: /r/:roomId
-      const pathParts = parsedUrl.pathname.split('/').filter(Boolean);
-      let extractedRoomId = '';
-      if (pathParts[0] === 'r' && pathParts[1]) {
-        extractedRoomId = pathParts[1];
-      } else if (pathParts[0]) {
-        extractedRoomId = pathParts[0];
-      }
-
-      const hashParams = new URLSearchParams(parsedUrl.hash.replace(/^#/, ''));
-      let extractedAccess = hashParams.get('access') || initialAccessSecret;
-      let extractedKey = hashParams.get('key') || initialEncryptionKey;
-
-      // Also check query parameters if hash wasn't present
-      if (!extractedAccess) extractedAccess = parsedUrl.searchParams.get('access') || '';
-      if (!extractedKey) extractedKey = parsedUrl.searchParams.get('key') || '';
-
-      if (!extractedRoomId || !extractedAccess || !extractedKey) {
-        throw new Error(
-          'Incomplete invitation link. Must contain room ID, access token, and encryption key (#access=...&key=...).'
-        );
-      }
-
-      onJoin(extractedRoomId, extractedAccess, extractedKey, nickname.trim());
-    } catch (err: any) {
-      setError(err?.message || 'Invalid invitation link format.');
+    const parsed = parseInvitationInput(input);
+    if (!parsed) {
+      setError(
+        activeTab === 'code'
+          ? 'Invalid room code format. A valid code starts with "HUSH-".'
+          : 'Invalid invitation link format. Must contain the room ID and parameters.'
+      );
+      return;
     }
+
+    onJoin(parsed.roomId, parsed.accessSecret, parsed.encryptionKey, nickname.trim());
   };
 
   return (
@@ -108,6 +90,40 @@ export const JoinRoomModal: React.FC<JoinRoomModalProps> = ({
           </button>
         </div>
 
+        {/* Tab switch between Code and Link */}
+        <div className="flex bg-ink p-1 rounded-xl border border-ink-border">
+          <button
+            type="button"
+            onClick={() => {
+              setActiveTab('code');
+              setError(null);
+            }}
+            className={`flex-1 py-1.5 px-3 rounded-lg text-xs font-mono font-medium flex items-center justify-center gap-2 transition-all ${
+              activeTab === 'code'
+                ? 'bg-ink-surface text-signal-lime shadow-sm'
+                : 'text-text-muted hover:text-text-primary'
+            }`}
+          >
+            <Hash className="w-3.5 h-3.5" />
+            <span>Join with Code</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setActiveTab('link');
+              setError(null);
+            }}
+            className={`flex-1 py-1.5 px-3 rounded-lg text-xs font-mono font-medium flex items-center justify-center gap-2 transition-all ${
+              activeTab === 'link'
+                ? 'bg-ink-surface text-signal-lime shadow-sm'
+                : 'text-text-muted hover:text-text-primary'
+            }`}
+          >
+            <LinkIcon className="w-3.5 h-3.5" />
+            <span>Join with Link</span>
+          </button>
+        </div>
+
         {error && (
           <div className="p-3 bg-coral-dim border border-coral text-coral rounded-xl text-xs font-mono flex items-start gap-2">
             <ShieldAlert className="w-4 h-4 shrink-0 mt-0.5" />
@@ -117,22 +133,31 @@ export const JoinRoomModal: React.FC<JoinRoomModalProps> = ({
 
         <form onSubmit={handleParseAndJoin} className="space-y-4">
           <div className="space-y-1.5">
-            <label className="text-[11px] font-mono text-text-muted uppercase tracking-wider">
-              Invitation Link or Room Secret
+            <label className="text-[11px] font-mono text-text-muted uppercase tracking-wider flex items-center justify-between">
+              <span>{activeTab === 'code' ? 'Room Code' : 'Invitation Link'}</span>
+              <span className="text-[10px] text-sage-light normal-case">
+                {activeTab === 'code' ? 'Starts with HUSH-' : 'URL with access key'}
+              </span>
             </label>
             <div className="flex items-center gap-2 p-2 bg-ink rounded-xl border border-ink-border focus-within:border-signal-lime">
-              <KeyRound className="w-4 h-4 text-text-muted shrink-0 ml-1" />
+              {activeTab === 'code' ? (
+                <KeyRound className="w-4 h-4 text-text-muted shrink-0 ml-1" />
+              ) : (
+                <LinkIcon className="w-4 h-4 text-text-muted shrink-0 ml-1" />
+              )}
               <input
                 type="text"
-                value={rawInput}
-                onChange={(e) => setRawInput(e.target.value)}
+                value={inputVal}
+                onChange={(e) => setInputVal(e.target.value)}
                 required
                 className="w-full bg-transparent px-1 text-xs font-mono text-text-primary outline-none"
-                placeholder="https://.../r/roomId#access=...&key=..."
+                placeholder={activeTab === 'code' ? 'HUSH-...' : 'https://.../r/...#access=...&key=...'}
               />
             </div>
             <p className="text-[11px] text-text-muted font-mono">
-              Paste the complete URL shared by the room creator.
+              {activeTab === 'code'
+                ? 'Paste the room code provided by the conversation host.'
+                : 'Paste the complete invitation URL shared with you.'}
             </p>
           </div>
 

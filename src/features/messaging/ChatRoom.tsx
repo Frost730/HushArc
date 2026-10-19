@@ -9,7 +9,7 @@ import { EphemeralComposer } from './EphemeralComposer.js';
 import { ParticipantDrawer } from '../participants/ParticipantDrawer.js';
 import { InvitationModal } from '../invitations/InvitationModal.js';
 import { useHushArcRoom, DecryptedMessage } from '../../hooks/useHushArcRoom.js';
-import { buildInvitationUrl } from '../../lib/ephemeral-session/session.js';
+import { buildInvitationUrl, encodeRoomCode } from '../../lib/ephemeral-session/session.js';
 
 interface ChatRoomProps {
   roomId: string;
@@ -31,6 +31,10 @@ export const ChatRoom: React.FC<ChatRoomProps> = ({
   const [showInviteModal, setShowInviteModal] = useState(false);
 
   const invitationUrl = buildInvitationUrl({ roomId, accessSecret, encryptionKey });
+  const roomCode = React.useMemo(
+    () => encodeRoomCode({ roomId, accessSecret, encryptionKey }),
+    [roomId, accessSecret, encryptionKey]
+  );
 
   const handleRoomEnded = React.useCallback(
     (_reason: string) => {
@@ -166,7 +170,7 @@ export const ChatRoom: React.FC<ChatRoomProps> = ({
       {/* Main Conversation Canvas */}
       <main className="flex-1 flex flex-col overflow-hidden relative">
         {messages.length === 0 && participants.length <= 1 ? (
-          <EmptyRoomState invitationUrl={invitationUrl} isDirect={true} />
+          <EmptyRoomState invitationUrl={invitationUrl} isDirect={true} roomCode={roomCode} />
         ) : (
           <MessageList
             messages={messages}
@@ -212,6 +216,8 @@ export const ChatRoom: React.FC<ChatRoomProps> = ({
         onClose={() => setShowInviteModal(false)}
         invitationUrl={invitationUrl}
         roomId={roomId}
+        accessSecret={accessSecret}
+        encryptionKey={encryptionKey}
         onEnterRoom={() => setShowInviteModal(false)}
       />
     </div>

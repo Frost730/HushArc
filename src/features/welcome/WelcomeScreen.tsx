@@ -109,7 +109,7 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
             className="w-full sm:w-auto py-3.5 px-6 rounded-2xl bg-ink-elevated hover:bg-ink-hover border border-ink-border text-text-primary hover:text-signal-lime font-display font-semibold text-sm flex items-center justify-center gap-2 transition-colors"
           >
             <KeyRound className="w-4 h-4" />
-            <span>Join with Link</span>
+            <span>Join with Code or Link</span>
           </button>
         </div>
       </main>
