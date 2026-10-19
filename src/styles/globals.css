@@ -1,0 +1,93 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: dark;
+}
+
+/* Custom sleek scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(83, 100, 90, 0.4);
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(213, 255, 112, 0.4);
+}
+
+/* Living Signal Orbital Animations */
+@keyframes orbital-spin {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes orbital-counter {
+  0% {
+    transform: rotate(360deg);
+  }
+  100% {
+    transform: rotate(0deg);
+  }
+}
+
+@keyframes signal-pulse-glow {
+  0%, 100% {
+    opacity: 0.9;
+    filter: drop-shadow(0 0 6px rgba(213, 255, 112, 0.6));
+  }
+  50% {
+    opacity: 0.35;
+    filter: drop-shadow(0 0 1px rgba(213, 255, 112, 0.2));
+  }
+}
+
+.animate-orbital {
+  animation: orbital-spin 40s linear infinite;
+}
+
+.animate-orbital-reverse {
+  animation: orbital-counter 55s linear infinite;
+}
+
+.animate-signal-pulse {
+  animation: signal-pulse-glow 3.5s ease-in-out infinite;
+}
+
+/* Respect user's reduced motion settings */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  ::before,
+  ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+  .animate-orbital,
+  .animate-orbital-reverse,
+  .animate-signal-pulse {
+    animation: none !important;
+  }
+}
+
+/* Safe areas for mobile viewports */
+.safe-bottom {
+  padding-bottom: max(env(safe-area-inset-bottom, 0px), 16px);
+}
+.safe-top {
+  padding-top: max(env(safe-area-inset-top, 0px), 16px);
+}
