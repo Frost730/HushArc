@@ -11,6 +11,6 @@ services:
       - key: NODE_ENV
         value: production
       - key: NODE_VERSION
-        value: 20
+        value: 22.23.4
       - key: NPM_CONFIG_PRODUCTION
         value: "false"
