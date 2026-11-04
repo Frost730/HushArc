@@ -37,10 +37,10 @@ HushArc is a zero-knowledge, zero-database ephemeral messaging application built
 ## Milestones
 | # | Name | Scope | Dependencies | Status |
 |---|------|-------|-------------|--------|
-| M1 | Performance Optimization & Code-Splitting | F1, F2, F3, F4, F5 in App.tsx, MessageList.tsx, ChatRoom.tsx, vite.config.ts | none | PLANNED |
-| M2 | Ephemeral Memory Hygiene & Lifecycle Cleanup | F6, F7, F8, F9 in useHushArcRoom.ts, modals, and composers | none | PLANNED |
-| M3 | Mobile Responsiveness, Virtual Keyboard & Touch Targets | F10, F11, F12, F13, F14 in index.html, globals.css, ChatRoom.tsx, MessageList.tsx, EphemeralComposer.tsx, ReactionPicker.tsx, ParticipantDrawer.tsx | none | PLANNED |
-| M4 | Final Integration, E2E Test Pass & Hardening | Phase 1: Pass 100% E2E tests (Tiers 1-4); Phase 2: Adversarial Hardening (Tier 5) with Challenger & Auditor | M1, M2, M3, E2E Track | PLANNED |
+| M1 | Performance Optimization & Code-Splitting | F1, F2, F3, F4, F5 in App.tsx, MessageList.tsx, ChatRoom.tsx, vite.config.ts | none | COMPLETED |
+| M2 | Ephemeral Memory Hygiene & Lifecycle Cleanup | F6, F7, F8, F9 in useHushArcRoom.ts, modals, and composers | none | COMPLETED |
+| M3 | Mobile Responsiveness, Virtual Keyboard & Touch Targets | F10, F11, F12, F13, F14 in index.html, globals.css, ChatRoom.tsx, MessageList.tsx, EphemeralComposer.tsx, ReactionPicker.tsx, ParticipantDrawer.tsx | none | COMPLETED |
+| M4 | Final Integration, E2E Test Pass & Hardening | Phase 1: Pass 100% E2E tests (Tiers 1-4); Phase 2: Adversarial Hardening (Tier 5) with Challenger & Auditor | M1, M2, M3, E2E Track | COMPLETED |
 
 ### Parallel Track: E2E Testing Track
 - **Owner**: E2E Testing Track Orchestrator
