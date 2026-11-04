@@ -10,6 +10,7 @@ import {
   unsealRoomKeyFromPeer,
   encryptBinaryChunk,
   decryptBinaryChunk,
+  bestEffortZeroize,
   EphemeralKeyPair,
 } from '../lib/crypto/e2ee.js';
 import { purgeLocalSession } from '../lib/ephemeral-session/session.js';
@@ -97,10 +98,12 @@ export function useHushArcRoom(options: UseHushArcRoomOptions) {
         fileSize: number;
         senderId: string;
         senderNickname: string;
+        lastReceivedAt: number;
       }
     >
   >(new Map());
   const createdBlobUrlsRef = useRef<string[]>([]);
+  const lastProgressRenderRef = useRef<Map<string, { time: number; progress: number }>>(new Map());
 
   const onRoomEndedRef = useRef(onRoomEnded);
   useEffect(() => {
@@ -119,6 +122,53 @@ export function useHushArcRoom(options: UseHushArcRoomOptions) {
       roomKeyRef.current = initialRoomKey;
     }
   }, [initialRoomKey]);
+
+  // Periodic eviction of abandoned incoming chunk buffers (60s TTL)
+  const evictAbandonedAttachments = useCallback(() => {
+    const now = Date.now();
+    const TTL_MS = 60000;
+    for (const [id, record] of incomingAttachmentsRef.current.entries()) {
+      if (now - record.lastReceivedAt > TTL_MS) {
+        for (const chunk of record.chunks) {
+          if (chunk) bestEffortZeroize(chunk);
+        }
+        incomingAttachmentsRef.current.delete(id);
+        lastProgressRenderRef.current.delete(id);
+      }
+    }
+  }, []);
+
+  // Complete memory teardown helper
+  const purgeAllMemory = useCallback(() => {
+    if (typingTimeoutRef.current) {
+      clearTimeout(typingTimeoutRef.current);
+      typingTimeoutRef.current = null;
+    }
+
+    // Revoke all in-memory Blob URLs immediately to free memory
+    for (const url of createdBlobUrlsRef.current) {
+      try {
+        URL.revokeObjectURL(url);
+      } catch {
+        // ignore
+      }
+    }
+    createdBlobUrlsRef.current = [];
+
+    // Zeroize all incoming chunk buffers before clearing map
+    for (const record of incomingAttachmentsRef.current.values()) {
+      for (const chunk of record.chunks) {
+        if (chunk) bestEffortZeroize(chunk);
+      }
+    }
+    incomingAttachmentsRef.current.clear();
+    lastProgressRenderRef.current.clear();
+
+    // Purge cryptographic keys from memory
+    roomKeyRef.current = '';
+    keyPairRef.current = null;
+    purgeLocalSession();
+  }, []);
 
   // Initialize ephemeral cryptography and connect WebSocket ONCE per room session
   useEffect(() => {
@@ -319,6 +369,8 @@ export function useHushArcRoom(options: UseHushArcRoomOptions) {
 
               case 'attachment_chunk_relayed': {
                 try {
+                  evictAbandonedAttachments();
+
                   const chunkBytes = await decryptBinaryChunk(
                     data.ciphertext,
                     data.nonce,
@@ -339,8 +391,11 @@ export function useHushArcRoom(options: UseHushArcRoomOptions) {
                       fileSize: data.fileSize,
                       senderId: data.senderId,
                       senderNickname: data.senderNickname,
+                      lastReceivedAt: Date.now(),
                     };
                     incomingAttachmentsRef.current.set(data.attachmentId, record);
+                  } else {
+                    record.lastReceivedAt = Date.now();
                   }
 
                   if (record.chunks[data.chunkIndex] === null) {
@@ -356,48 +411,65 @@ export function useHushArcRoom(options: UseHushArcRoomOptions) {
                     const blob = new Blob(record.chunks as BlobPart[], { type: sanitizeAttachmentMimeType(record.fileType) });
                     blobUrl = URL.createObjectURL(blob);
                     createdBlobUrlsRef.current.push(blobUrl);
+
+                    // Zeroize decrypted chunk buffers now that the Blob holds the payload
+                    for (const chunk of record.chunks) {
+                      if (chunk) bestEffortZeroize(chunk);
+                    }
                     incomingAttachmentsRef.current.delete(data.attachmentId);
+                    lastProgressRenderRef.current.delete(data.attachmentId);
                   }
 
-                  setMessages((prev) => {
-                    const existingIndex = prev.findIndex((m) => m.id === data.attachmentId);
-                    if (existingIndex >= 0) {
-                      const updated = [...prev];
-                      const existingMsg = updated[existingIndex]!;
-                      updated[existingIndex] = {
-                        ...existingMsg,
-                        attachment: {
-                          ...existingMsg.attachment!,
-                          progress,
-                          isComplete,
-                          blobUrl: blobUrl || existingMsg.attachment?.blobUrl,
-                        },
-                      };
-                      return updated;
-                    } else {
-                      const newMsg: DecryptedMessage = {
-                        id: data.attachmentId,
-                        senderId: data.senderId,
-                        senderNickname: data.senderNickname,
-                        isMine: false,
-                        plaintext: `Shared file: ${safeFileName}`,
-                        timestamp: data.timestamp,
-                        epoch: data.epoch,
-                        deliveryStatus: 'delivered',
-                        reactions: {},
-                        attachment: {
-                          id: data.attachmentId,
-                          fileName: safeFileName,
-                          fileType: safeFileType,
-                          fileSize: data.fileSize,
-                          blobUrl,
-                          progress,
-                          isComplete,
-                        },
-                      };
-                      return [...prev, newMsg];
+                  // Throttled UI state updates: update on completion or if >= 10% change or >= 150ms elapsed
+                  const lastRender = lastProgressRenderRef.current.get(data.attachmentId) || { time: 0, progress: 0 };
+                  const now = Date.now();
+                  const shouldRender = isComplete || progress - lastRender.progress >= 10 || now - lastRender.time >= 150;
+
+                  if (shouldRender) {
+                    if (!isComplete) {
+                      lastProgressRenderRef.current.set(data.attachmentId, { time: now, progress });
                     }
-                  });
+
+                    setMessages((prev) => {
+                      const existingIndex = prev.findIndex((m) => m.id === data.attachmentId);
+                      if (existingIndex >= 0) {
+                        const updated = [...prev];
+                        const existingMsg = updated[existingIndex]!;
+                        updated[existingIndex] = {
+                          ...existingMsg,
+                          attachment: {
+                            ...existingMsg.attachment!,
+                            progress,
+                            isComplete,
+                            blobUrl: blobUrl || existingMsg.attachment?.blobUrl,
+                          },
+                        };
+                        return updated;
+                      } else {
+                        const newMsg: DecryptedMessage = {
+                          id: data.attachmentId,
+                          senderId: data.senderId,
+                          senderNickname: data.senderNickname,
+                          isMine: false,
+                          plaintext: `Shared file: ${safeFileName}`,
+                          timestamp: data.timestamp,
+                          epoch: data.epoch,
+                          deliveryStatus: 'delivered',
+                          reactions: {},
+                          attachment: {
+                            id: data.attachmentId,
+                            fileName: safeFileName,
+                            fileType: safeFileType,
+                            fileSize: data.fileSize,
+                            blobUrl,
+                            progress,
+                            isComplete,
+                          },
+                        };
+                        return [...prev, newMsg];
+                      }
+                    });
+                  }
                 } catch (e) {
                   console.error('[HushArc] Failed to decrypt attachment chunk:', e);
                 }
@@ -444,6 +516,11 @@ export function useHushArcRoom(options: UseHushArcRoomOptions) {
     return () => {
       isCancelled = true;
       if (wsRef.current) {
+        // Detach handlers to prevent closure retention
+        wsRef.current.onopen = null;
+        wsRef.current.onmessage = null;
+        wsRef.current.onerror = null;
+        wsRef.current.onclose = null;
         try {
           wsRef.current.close(1000, 'Exited');
         } catch {
@@ -451,23 +528,9 @@ export function useHushArcRoom(options: UseHushArcRoomOptions) {
         }
         wsRef.current = null;
       }
-      // Revoke all in-memory Blob URLs immediately to free memory
-      for (const url of createdBlobUrlsRef.current) {
-        try {
-          URL.revokeObjectURL(url);
-        } catch {
-          // ignore
-        }
-      }
-      createdBlobUrlsRef.current = [];
-      incomingAttachmentsRef.current.clear();
-
-      // Purge all cryptographic keys from memory
-      roomKeyRef.current = '';
-      keyPairRef.current = null;
-      purgeLocalSession();
+      purgeAllMemory();
     };
-  }, [roomId, accessSecret]);
+  }, [roomId, accessSecret, evictAbandonedAttachments, purgeAllMemory]);
 
   // Send an end-to-end encrypted message
   const sendMessage = useCallback(
@@ -606,30 +669,35 @@ export function useHushArcRoom(options: UseHushArcRoomOptions) {
     }
   }, [roomId, currentEpoch, participants, myParticipantId]);
 
-  // Leave room and cleanly wipe in-memory transcript
+  // Leave room and cleanly wipe in-memory transcript & secrets
   const leaveRoom = useCallback(() => {
     if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
       wsRef.current.send(JSON.stringify({ type: 'leave', roomId }));
+      wsRef.current.onopen = null;
+      wsRef.current.onmessage = null;
+      wsRef.current.onerror = null;
+      wsRef.current.onclose = null;
       wsRef.current.close(1000, 'Left room');
+      wsRef.current = null;
     }
-    // Wipe client transcript and cryptographic references immediately
     setMessages([]);
-    roomKeyRef.current = '';
-    keyPairRef.current = null;
-    purgeLocalSession();
-  }, [roomId]);
+    purgeAllMemory();
+  }, [roomId, purgeAllMemory]);
 
   // End room for everyone
   const endRoom = useCallback(() => {
     if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
       wsRef.current.send(JSON.stringify({ type: 'end_room', roomId }));
+      wsRef.current.onopen = null;
+      wsRef.current.onmessage = null;
+      wsRef.current.onerror = null;
+      wsRef.current.onclose = null;
       wsRef.current.close(1000, 'Room ended');
+      wsRef.current = null;
     }
     setMessages([]);
-    roomKeyRef.current = '';
-    keyPairRef.current = null;
-    purgeLocalSession();
-  }, [roomId]);
+    purgeAllMemory();
+  }, [roomId, purgeAllMemory]);
 
   // Send an encrypted ephemeral binary attachment (chunked at 32KB)
   const sendAttachment = useCallback(
@@ -686,6 +754,9 @@ export function useHushArcRoom(options: UseHushArcRoomOptions) {
           roomKeyRef.current,
           `epoch-${currentEpoch}`
         );
+
+        // Immediate zeroization of transient chunk slice
+        bestEffortZeroize(chunkBytes);
 
         const clientEvent: ClientEvent = {
           type: 'attachment_chunk',

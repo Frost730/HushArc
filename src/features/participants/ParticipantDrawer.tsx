@@ -33,13 +33,13 @@ export const ParticipantDrawer: React.FC<ParticipantDrawerProps> = ({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex justify-end bg-black/60 backdrop-blur-sm animate-fadeIn"
+      className="fixed inset-0 z-50 flex justify-end bg-black/70 backdrop-blur-sm animate-fadeIn"
       onClick={onClose}
       role="dialog"
       aria-modal="true"
     >
       <div
-        className="w-full max-w-xs sm:max-w-sm h-full bg-ink-elevated border-l border-ink-border p-5 flex flex-col justify-between shadow-2xl"
+        className="w-full max-w-full sm:max-w-sm h-full bg-ink-elevated border-l border-ink-border p-4 sm:p-5 flex flex-col justify-between shadow-2xl safe-top safe-bottom safe-x"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="space-y-4">
@@ -52,8 +52,8 @@ export const ParticipantDrawer: React.FC<ParticipantDrawerProps> = ({
             </div>
             <button
               onClick={onClose}
-              className="p-1 rounded-md text-text-muted hover:text-text-primary"
-              aria-label="Close"
+              className="p-2 min-w-[36px] min-h-[36px] flex items-center justify-center rounded-lg text-text-muted hover:text-text-primary transition-colors active:scale-95"
+              aria-label="Close participants list"
             >
               <X className="w-4 h-4" />
             </button>
@@ -72,7 +72,7 @@ export const ParticipantDrawer: React.FC<ParticipantDrawerProps> = ({
                   <div className="flex items-center justify-between">
                     <span className="font-semibold text-xs text-text-primary flex items-center gap-1.5 font-mono">
                       <Radio className="w-3 h-3 text-signal-lime animate-pulse" />
-                      {p.nickname} {isMe && <span className="text-signal-lime">(You)</span>}
+                      {p.nickname} {isMe && <span className="text-signal-lime font-bold">(You)</span>}
                     </span>
                     <span className="text-[10px] font-mono text-text-muted">
                       {new Date(p.joinedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
@@ -98,7 +98,7 @@ export const ParticipantDrawer: React.FC<ParticipantDrawerProps> = ({
             type="button"
             onClick={handleRotate}
             disabled={rotating}
-            className="w-full py-2.5 px-3 rounded-xl bg-ink-hover hover:bg-ink-subtle border border-ink-border text-text-primary hover:text-signal-lime font-mono text-xs flex items-center justify-center gap-2 transition-colors disabled:opacity-50"
+            className="w-full min-h-[44px] py-3 px-3 rounded-xl bg-ink-hover hover:bg-ink-subtle border border-ink-border text-text-primary hover:text-signal-lime font-mono text-xs flex items-center justify-center gap-2 transition-colors active:scale-98 disabled:opacity-50"
             title="Rotate the symmetric room key for all remaining members"
           >
             <RefreshCw className={`w-3.5 h-3.5 ${rotating ? 'animate-spin' : ''}`} />

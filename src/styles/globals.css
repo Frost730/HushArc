@@ -91,3 +91,16 @@
 .safe-top {
   padding-top: max(env(safe-area-inset-top, 0px), 16px);
 }
+.safe-x {
+  padding-left: max(env(safe-area-inset-left, 0px), 16px);
+  padding-right: max(env(safe-area-inset-right, 0px), 16px);
+}
+
+/* Optimize touch interactions and prevent double-tap zoom latency */
+button,
+input,
+textarea,
+select,
+a {
+  touch-action: manipulation;
+}

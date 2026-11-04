@@ -82,13 +82,13 @@ export const InvitationModal: React.FC<InvitationModalProps> = ({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fadeIn"
+      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/80 backdrop-blur-sm animate-fadeIn"
       onClick={onClose}
       role="dialog"
       aria-modal="true"
     >
       <div
-        className="w-full max-w-md bg-ink-elevated border border-ink-border rounded-2xl p-6 shadow-2xl space-y-5"
+        className="w-full max-w-md max-h-[90dvh] overflow-y-auto bg-ink-elevated border border-ink-border rounded-2xl p-5 sm:p-6 shadow-2xl space-y-5"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between pb-3 border-b border-ink-border">
@@ -100,7 +100,7 @@ export const InvitationModal: React.FC<InvitationModalProps> = ({
           </div>
           <button
             onClick={onClose}
-            className="p-1 rounded-md text-text-muted hover:text-text-primary transition-colors"
+            className="p-2 min-w-[36px] min-h-[36px] flex items-center justify-center rounded-lg text-text-muted hover:text-text-primary transition-colors active:scale-95"
             aria-label="Close"
           >
             <X className="w-4 h-4" />
@@ -117,7 +117,7 @@ export const InvitationModal: React.FC<InvitationModalProps> = ({
             <button
               type="button"
               onClick={() => setActiveTab('code')}
-              className={`flex-1 py-1.5 px-3 rounded-lg text-xs font-mono font-medium flex items-center justify-center gap-2 transition-all ${
+              className={`flex-1 min-h-[40px] py-1.5 px-3 rounded-lg text-xs font-mono font-medium flex items-center justify-center gap-2 transition-all ${
                 activeTab === 'code'
                   ? 'bg-ink-surface text-signal-lime shadow-sm'
                   : 'text-text-muted hover:text-text-primary'
@@ -129,7 +129,7 @@ export const InvitationModal: React.FC<InvitationModalProps> = ({
             <button
               type="button"
               onClick={() => setActiveTab('link')}
-              className={`flex-1 py-1.5 px-3 rounded-lg text-xs font-mono font-medium flex items-center justify-center gap-2 transition-all ${
+              className={`flex-1 min-h-[40px] py-1.5 px-3 rounded-lg text-xs font-mono font-medium flex items-center justify-center gap-2 transition-all ${
                 activeTab === 'link'
                   ? 'bg-ink-surface text-signal-lime shadow-sm'
                   : 'text-text-muted hover:text-text-primary'
@@ -157,8 +157,9 @@ export const InvitationModal: React.FC<InvitationModalProps> = ({
                 <button
                   type="button"
                   onClick={handleCopyCode}
-                  className="shrink-0 p-2.5 rounded-lg bg-ink-elevated hover:bg-ink-hover border border-ink-border text-text-primary hover:text-signal-lime transition-colors flex items-center gap-1.5 text-xs font-mono"
+                  className="shrink-0 min-h-[44px] px-3 rounded-lg bg-ink-elevated hover:bg-ink-hover border border-ink-border text-text-primary hover:text-signal-lime transition-colors flex items-center gap-1.5 text-xs font-mono active:scale-95"
                   title="Copy room code"
+                  aria-label="Copy room code"
                 >
                   {copiedCode ? <Check className="w-3.5 h-3.5 text-signal-lime" /> : <Copy className="w-3.5 h-3.5" />}
                   <span>{copiedCode ? 'Copied' : 'Copy'}</span>
@@ -184,13 +185,14 @@ export const InvitationModal: React.FC<InvitationModalProps> = ({
                   type="text"
                   readOnly
                   value={invitationUrl}
-                  className="w-full bg-ink-surface p-2 rounded-lg text-xs font-mono text-signal-lime outline-none truncate select-all border border-ink-border"
+                  className="w-full bg-ink-surface p-2.5 rounded-lg text-xs font-mono text-signal-lime outline-none truncate select-all border border-ink-border"
                 />
                 <button
                   type="button"
                   onClick={handleCopyLink}
-                  className="shrink-0 p-2 rounded-lg bg-ink-elevated hover:bg-ink-hover border border-ink-border text-text-primary hover:text-signal-lime transition-colors flex items-center gap-1.5 text-xs font-mono"
+                  className="shrink-0 min-h-[44px] px-3 rounded-lg bg-ink-elevated hover:bg-ink-hover border border-ink-border text-text-primary hover:text-signal-lime transition-colors flex items-center gap-1.5 text-xs font-mono active:scale-95"
                   title="Copy invitation link"
+                  aria-label="Copy invitation link"
                 >
                   {copiedLink ? <Check className="w-3.5 h-3.5 text-signal-lime" /> : <Copy className="w-3.5 h-3.5" />}
                   <span>{copiedLink ? 'Copied' : 'Copy'}</span>
@@ -213,7 +215,7 @@ export const InvitationModal: React.FC<InvitationModalProps> = ({
             <button
               type="button"
               onClick={handleShareLink}
-              className="flex-1 py-2.5 px-4 rounded-xl bg-ink-hover hover:bg-ink-subtle border border-ink-border text-text-primary font-medium text-xs flex items-center justify-center gap-2 transition-colors"
+              className="flex-1 min-h-[44px] py-2.5 px-4 rounded-xl bg-ink-hover hover:bg-ink-subtle border border-ink-border text-text-primary font-medium text-xs flex items-center justify-center gap-2 transition-colors active:scale-98"
             >
               <Share2 className="w-3.5 h-3.5 text-signal-lime" />
               <span>Share</span>
@@ -223,7 +225,7 @@ export const InvitationModal: React.FC<InvitationModalProps> = ({
           <button
             type="button"
             onClick={onEnterRoom}
-            className="flex-1 py-2.5 px-4 rounded-xl bg-signal-lime hover:bg-[#c2ed5c] text-ink font-semibold text-xs flex items-center justify-center gap-2 transition-colors shadow-signal-glow-sm"
+            className="flex-1 min-h-[44px] py-2.5 px-4 rounded-xl bg-signal-lime hover:bg-[#c2ed5c] text-ink font-semibold text-xs flex items-center justify-center gap-2 transition-colors shadow-signal-glow-sm active:scale-98"
           >
             <span>Enter Room</span>
             <ArrowRight className="w-3.5 h-3.5" />

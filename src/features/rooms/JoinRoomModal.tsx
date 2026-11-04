@@ -106,13 +106,13 @@ export const JoinRoomModal: React.FC<JoinRoomModalProps> = ({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fadeIn"
+      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/80 backdrop-blur-sm animate-fadeIn"
       onClick={onClose}
       role="dialog"
       aria-modal="true"
     >
       <div
-        className="w-full max-w-md bg-ink-elevated border border-ink-border rounded-2xl p-6 shadow-2xl space-y-5"
+        className="w-full max-w-md max-h-[90dvh] overflow-y-auto bg-ink-elevated border border-ink-border rounded-2xl p-5 sm:p-6 shadow-2xl space-y-5"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between pb-3 border-b border-ink-border">
@@ -124,7 +124,7 @@ export const JoinRoomModal: React.FC<JoinRoomModalProps> = ({
           </div>
           <button
             onClick={onClose}
-            className="p-1 rounded-md text-text-muted hover:text-text-primary transition-colors"
+            className="p-2 min-w-[36px] min-h-[36px] flex items-center justify-center rounded-lg text-text-muted hover:text-text-primary transition-colors active:scale-95"
             aria-label="Close"
           >
             <X className="w-4 h-4" />
@@ -139,7 +139,7 @@ export const JoinRoomModal: React.FC<JoinRoomModalProps> = ({
               setActiveTab('code');
               setError(null);
             }}
-            className={`flex-1 py-1.5 px-3 rounded-lg text-xs font-mono font-medium flex items-center justify-center gap-2 transition-all ${
+            className={`flex-1 min-h-[40px] py-1.5 px-3 rounded-lg text-xs font-mono font-medium flex items-center justify-center gap-2 transition-all ${
               activeTab === 'code'
                 ? 'bg-ink-surface text-signal-lime shadow-sm'
                 : 'text-text-muted hover:text-text-primary'
@@ -154,7 +154,7 @@ export const JoinRoomModal: React.FC<JoinRoomModalProps> = ({
               setActiveTab('link');
               setError(null);
             }}
-            className={`flex-1 py-1.5 px-3 rounded-lg text-xs font-mono font-medium flex items-center justify-center gap-2 transition-all ${
+            className={`flex-1 min-h-[40px] py-1.5 px-3 rounded-lg text-xs font-mono font-medium flex items-center justify-center gap-2 transition-all ${
               activeTab === 'link'
                 ? 'bg-ink-surface text-signal-lime shadow-sm'
                 : 'text-text-muted hover:text-text-primary'
@@ -191,8 +191,8 @@ export const JoinRoomModal: React.FC<JoinRoomModalProps> = ({
                 value={inputVal}
                 onChange={(e) => setInputVal(e.target.value)}
                 required
-                className={`w-full bg-transparent px-1 text-xs font-mono outline-none ${
-                  activeTab === 'code' ? 'text-signal-lime font-semibold tracking-wider text-sm' : 'text-text-primary'
+                className={`w-full bg-transparent px-1 font-mono outline-none text-base sm:text-xs ${
+                  activeTab === 'code' ? 'text-signal-lime font-semibold tracking-wider sm:text-sm' : 'text-text-primary'
                 }`}
                 placeholder={activeTab === 'code' ? 'e.g. 482-915' : 'https://.../r/...#access=...&key=...'}
               />
@@ -206,7 +206,7 @@ export const JoinRoomModal: React.FC<JoinRoomModalProps> = ({
 
           <div className="space-y-1.5">
             <label className="text-[11px] font-mono text-text-muted uppercase tracking-wider flex items-center justify-between">
-              <span>Your Temporary Moniker</span>
+              <span>Your Nickname</span>
               <span className="text-sage-light normal-case">Optional</span>
             </label>
             <div className="flex items-center gap-2 p-1.5 bg-ink rounded-xl border border-ink-border focus-within:border-signal-lime">
@@ -216,16 +216,17 @@ export const JoinRoomModal: React.FC<JoinRoomModalProps> = ({
                 onChange={(e) => setNickname(e.target.value)}
                 maxLength={30}
                 required
-                className="w-full bg-transparent px-2 text-xs font-mono text-text-primary outline-none"
+                className="w-full bg-transparent px-2 text-base sm:text-xs font-mono text-text-primary outline-none"
                 placeholder="Choose temporary moniker"
               />
               <button
                 type="button"
                 onClick={handleRandomizeNickname}
-                className="p-1.5 rounded-lg bg-ink-elevated hover:bg-ink-hover text-text-secondary hover:text-signal-lime transition-colors"
+                className="p-2 min-w-[36px] min-h-[36px] flex items-center justify-center rounded-lg bg-ink-elevated hover:bg-ink-hover text-text-secondary hover:text-signal-lime transition-colors active:scale-95"
                 title="Generate another moniker"
+                aria-label="Randomize nickname"
               >
-                <Sparkles className="w-3.5 h-3.5" />
+                <Sparkles className="w-4 h-4" />
               </button>
             </div>
           </div>
@@ -233,11 +234,11 @@ export const JoinRoomModal: React.FC<JoinRoomModalProps> = ({
           <button
             type="submit"
             disabled={isResolving}
-            className="w-full py-2.5 px-4 rounded-xl bg-signal-lime hover:bg-[#c2ed5c] disabled:opacity-50 disabled:cursor-not-allowed text-ink font-semibold text-xs flex items-center justify-center gap-2 transition-colors shadow-signal-glow-sm mt-3"
+            className="w-full min-h-[44px] py-3 px-4 rounded-xl bg-signal-lime hover:bg-[#c2ed5c] disabled:opacity-50 disabled:cursor-not-allowed text-ink font-semibold text-xs flex items-center justify-center gap-2 transition-colors shadow-signal-glow-sm mt-3 active:scale-98"
           >
             {isResolving ? (
               <>
-                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                <Loader2 className="w-4 h-4 animate-spin" />
                 <span>Resolving Room Code...</span>
               </>
             ) : (

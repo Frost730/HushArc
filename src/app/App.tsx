@@ -1,11 +1,22 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Suspense, lazy } from 'react';
+import { Loader2 } from 'lucide-react';
 import { SignalField } from '../components/SignalField.js';
 import { WelcomeScreen } from '../features/welcome/WelcomeScreen.js';
-import { CreateRoomModal } from '../features/rooms/CreateRoomModal.js';
-import { JoinRoomModal } from '../features/rooms/JoinRoomModal.js';
-import { InvitationModal } from '../features/invitations/InvitationModal.js';
-import { ChatRoom } from '../features/messaging/ChatRoom.js';
 import { extractAndCleanInvitationFragment, generateRandomNickname, purgeLocalSession } from '../lib/ephemeral-session/session.js';
+
+// Lazy load secondary modal dialogs and the encrypted chat view for bundle code-splitting
+const CreateRoomModal = lazy(() =>
+  import('../features/rooms/CreateRoomModal.js').then((m) => ({ default: m.CreateRoomModal }))
+);
+const JoinRoomModal = lazy(() =>
+  import('../features/rooms/JoinRoomModal.js').then((m) => ({ default: m.JoinRoomModal }))
+);
+const InvitationModal = lazy(() =>
+  import('../features/invitations/InvitationModal.js').then((m) => ({ default: m.InvitationModal }))
+);
+const ChatRoom = lazy(() =>
+  import('../features/messaging/ChatRoom.js').then((m) => ({ default: m.ChatRoom }))
+);
 
 interface ActiveRoomState {
   roomId: string;
@@ -14,6 +25,12 @@ interface ActiveRoomState {
   nickname: string;
   shortCode?: string;
 }
+
+const LoadingBackdrop: React.FC = () => (
+  <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+    <Loader2 className="w-8 h-8 animate-spin text-signal-lime" />
+  </div>
+);
 
 export const App: React.FC = () => {
   const [activeRoom, setActiveRoom] = useState<ActiveRoomState | null>(null);
@@ -125,55 +142,61 @@ export const App: React.FC = () => {
   }, []);
 
   return (
-    <div className="relative min-h-screen bg-ink text-text-primary overflow-x-hidden font-sans">
+    <div className="relative min-h-[100dvh] bg-ink text-text-primary overflow-x-hidden font-sans">
       {/* Living Signal ambient background field */}
       <SignalField />
 
       {/* Main View Router */}
-      {activeRoom ? (
-        <ChatRoom
-          roomId={activeRoom.roomId}
-          accessSecret={activeRoom.accessSecret}
-          encryptionKey={activeRoom.encryptionKey}
-          nickname={activeRoom.nickname}
-          shortCode={activeRoom.shortCode}
-          onExit={handleExitRoom}
-        />
-      ) : (
-        <WelcomeScreen
-          onCreateRoom={() => setShowCreateModal(true)}
-          onJoinRoom={() => setShowJoinModal(true)}
-        />
-      )}
+      <Suspense fallback={<LoadingBackdrop />}>
+        {activeRoom ? (
+          <ChatRoom
+            roomId={activeRoom.roomId}
+            accessSecret={activeRoom.accessSecret}
+            encryptionKey={activeRoom.encryptionKey}
+            nickname={activeRoom.nickname}
+            shortCode={activeRoom.shortCode}
+            onExit={handleExitRoom}
+          />
+        ) : (
+          <WelcomeScreen
+            onCreateRoom={() => setShowCreateModal(true)}
+            onJoinRoom={() => setShowJoinModal(true)}
+          />
+        )}
 
-      {/* Modals */}
-      <CreateRoomModal
-        isOpen={showCreateModal}
-        onClose={() => setShowCreateModal(false)}
-        onRoomCreated={handleRoomCreated}
-      />
+        {/* Modals */}
+        {showCreateModal && (
+          <CreateRoomModal
+            isOpen={showCreateModal}
+            onClose={() => setShowCreateModal(false)}
+            onRoomCreated={handleRoomCreated}
+          />
+        )}
 
-      <JoinRoomModal
-        isOpen={showJoinModal}
-        onClose={() => setShowJoinModal(false)}
-        onJoin={handleJoinRoom}
-        initialRoomId={joinModalParams?.roomId}
-        initialAccessSecret={joinModalParams?.accessSecret}
-        initialEncryptionKey={joinModalParams?.encryptionKey}
-      />
+        {showJoinModal && (
+          <JoinRoomModal
+            isOpen={showJoinModal}
+            onClose={() => setShowJoinModal(false)}
+            onJoin={handleJoinRoom}
+            initialRoomId={joinModalParams?.roomId}
+            initialAccessSecret={joinModalParams?.accessSecret}
+            initialEncryptionKey={joinModalParams?.encryptionKey}
+          />
+        )}
 
-      {invitationModalData && (
-        <InvitationModal
-          isOpen={Boolean(invitationModalData)}
-          invitationUrl={invitationModalData.url}
-          roomId={invitationModalData.roomId}
-          accessSecret={invitationModalData.accessSecret}
-          encryptionKey={invitationModalData.encryptionKey}
-          shortCode={invitationModalData.shortCode}
-          onClose={() => setInvitationModalData(null)}
-          onEnterRoom={handleEnterRoomFromInvite}
-        />
-      )}
+        {invitationModalData && (
+          <InvitationModal
+            isOpen={Boolean(invitationModalData)}
+            invitationUrl={invitationModalData.url}
+            roomId={invitationModalData.roomId}
+            accessSecret={invitationModalData.accessSecret}
+            encryptionKey={invitationModalData.encryptionKey}
+            shortCode={invitationModalData.shortCode}
+            onClose={() => setInvitationModalData(null)}
+            onEnterRoom={handleEnterRoomFromInvite}
+          />
+        )}
+      </Suspense>
     </div>
   );
 };

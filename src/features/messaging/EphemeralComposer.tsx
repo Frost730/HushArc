@@ -93,22 +93,22 @@ export const EphemeralComposer: React.FC<EphemeralComposerProps> = ({
   };
 
   return (
-    <div className="w-full bg-ink-elevated border-t border-ink-border p-3 space-y-2 safe-bottom">
+    <div className="w-full bg-ink-elevated border-t border-ink-border p-2.5 sm:p-3 space-y-2 safe-bottom shrink-0">
       {/* Quoted reply banner */}
       {replyToMessage && (
         <div className="flex items-center justify-between px-3 py-1.5 bg-ink rounded-lg border border-ink-border text-xs font-mono">
           <div className="flex items-center gap-2 truncate text-text-secondary">
             <CornerDownRight className="w-3.5 h-3.5 text-signal-lime shrink-0" />
             <span className="font-semibold text-text-primary">{replyToMessage.senderNickname}:</span>
-            <span className="truncate max-w-[240px] text-text-muted">{replyToMessage.plaintext}</span>
+            <span className="truncate max-w-[200px] sm:max-w-[320px] text-text-muted">{replyToMessage.plaintext}</span>
           </div>
           <button
             type="button"
             onClick={onClearReply}
-            className="p-1 text-text-muted hover:text-text-primary"
+            className="p-1.5 min-w-[36px] min-h-[36px] flex items-center justify-center text-text-muted hover:text-text-primary transition-colors active:scale-95"
             aria-label="Cancel reply"
           >
-            <X className="w-3.5 h-3.5" />
+            <X className="w-4 h-4" />
           </button>
         </div>
       )}
@@ -121,7 +121,7 @@ export const EphemeralComposer: React.FC<EphemeralComposerProps> = ({
       )}
 
       {/* Main composer bar */}
-      <div className="flex items-end gap-2 bg-ink p-1.5 rounded-xl border border-ink-border focus-within:border-signal-lime transition-colors">
+      <div className="flex items-end gap-1.5 sm:gap-2 bg-ink p-1 sm:p-1.5 rounded-xl border border-ink-border focus-within:border-signal-lime transition-colors">
         {/* Hidden file input */}
         <input
           ref={fileInputRef}
@@ -131,39 +131,41 @@ export const EphemeralComposer: React.FC<EphemeralComposerProps> = ({
           disabled={disabled || isAttaching}
         />
 
-        {/* Attachment trigger */}
+        {/* Attachment trigger (>=44x44px accessible touch target) */}
         <button
           type="button"
           onClick={handleFileClick}
           disabled={disabled || isAttaching}
-          className="shrink-0 p-2 rounded-lg text-text-muted hover:text-signal-lime hover:bg-ink-surface disabled:opacity-30 transition-all active:scale-95"
+          className="shrink-0 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg text-text-muted hover:text-signal-lime hover:bg-ink-surface disabled:opacity-30 transition-all active:scale-95"
           title="Attach encrypted file (max 5MB, chunked at 32KB)"
           aria-label="Attach file"
         >
           {isAttaching ? (
-            <Loader2 className="w-4 h-4 animate-spin text-signal-lime" />
+            <Loader2 className="w-5 h-5 animate-spin text-signal-lime" />
           ) : (
-            <Paperclip className="w-4 h-4" />
+            <Paperclip className="w-5 h-5" />
           )}
         </button>
 
+        {/* Message Input: 16px (text-base) on mobile viewports prevents iOS Safari auto-zoom, text-xs on larger screens */}
         <textarea
           ref={textareaRef}
           value={text}
           onChange={handleChange}
           onKeyDown={handleKeyDown}
           disabled={disabled}
-          placeholder="Transmit ephemeral signal... (Enter to send)"
+          placeholder="Transmit signal... (Enter to send)"
           rows={1}
           maxLength={2000}
-          className="w-full bg-transparent px-2 py-2 text-xs font-sans text-text-primary placeholder:text-text-muted outline-none resize-none max-h-36 overflow-y-auto leading-relaxed"
+          className="w-full bg-transparent px-2 py-2.5 text-base sm:text-xs font-sans text-text-primary placeholder:text-text-muted outline-none resize-none max-h-36 overflow-y-auto leading-relaxed"
         />
 
+        {/* Send trigger (>=44x44px accessible touch target) */}
         <button
           type="button"
           onClick={handleSend}
           disabled={disabled || !text.trim()}
-          className="shrink-0 p-2.5 rounded-lg bg-signal-lime hover:bg-[#c2ed5c] disabled:opacity-30 disabled:hover:bg-signal-lime text-ink font-semibold transition-all active:scale-95 shadow-signal-glow-sm"
+          className="shrink-0 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg bg-signal-lime hover:bg-[#c2ed5c] disabled:opacity-30 disabled:hover:bg-signal-lime text-ink font-semibold transition-all active:scale-95 shadow-signal-glow-sm"
           title="Send message"
           aria-label="Send message"
         >

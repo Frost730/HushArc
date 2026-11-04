@@ -30,3 +30,6 @@ dist-server
 *.njsproj
 *.sln
 *.sw?
+
+# Agent teamwork internal working directory
+.agents/

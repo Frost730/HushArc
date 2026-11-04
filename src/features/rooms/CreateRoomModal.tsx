@@ -76,13 +76,13 @@ export const CreateRoomModal: React.FC<CreateRoomModalProps> = ({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fadeIn"
+      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/80 backdrop-blur-sm animate-fadeIn"
       onClick={onClose}
       role="dialog"
       aria-modal="true"
     >
       <div
-        className="w-full max-w-md bg-ink-elevated border border-ink-border rounded-2xl p-6 shadow-2xl space-y-5"
+        className="w-full max-w-md max-h-[90dvh] overflow-y-auto bg-ink-elevated border border-ink-border rounded-2xl p-5 sm:p-6 shadow-2xl space-y-5"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between pb-3 border-b border-ink-border">
@@ -94,7 +94,7 @@ export const CreateRoomModal: React.FC<CreateRoomModalProps> = ({
           </div>
           <button
             onClick={onClose}
-            className="p-1 rounded-md text-text-muted hover:text-text-primary transition-colors"
+            className="p-2 min-w-[36px] min-h-[36px] flex items-center justify-center rounded-lg text-text-muted hover:text-text-primary transition-colors active:scale-95"
             aria-label="Close"
           >
             <X className="w-4 h-4" />
@@ -117,7 +117,7 @@ export const CreateRoomModal: React.FC<CreateRoomModalProps> = ({
               <button
                 type="button"
                 onClick={() => setIsDirect(true)}
-                className={`flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl border text-xs font-medium transition-all ${
+                className={`flex items-center justify-center gap-2 min-h-[44px] py-2.5 px-3 rounded-xl border text-xs font-medium transition-all ${
                   isDirect
                     ? 'bg-ink border-signal-lime text-signal-lime shadow-signal-glow-sm'
                     : 'bg-ink/50 border-ink-border text-text-secondary hover:border-ink-subtle'
@@ -129,7 +129,7 @@ export const CreateRoomModal: React.FC<CreateRoomModalProps> = ({
               <button
                 type="button"
                 onClick={() => setIsDirect(false)}
-                className={`flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl border text-xs font-medium transition-all ${
+                className={`flex items-center justify-center gap-2 min-h-[44px] py-2.5 px-3 rounded-xl border text-xs font-medium transition-all ${
                   !isDirect
                     ? 'bg-ink border-signal-lime text-signal-lime shadow-signal-glow-sm'
                     : 'bg-ink/50 border-ink-border text-text-secondary hover:border-ink-subtle'
@@ -154,12 +154,12 @@ export const CreateRoomModal: React.FC<CreateRoomModalProps> = ({
                 max="25"
                 value={maxParticipants}
                 onChange={(e) => setMaxParticipants(parseInt(e.target.value, 10))}
-                className="w-full accent-signal-lime bg-ink h-1.5 rounded-lg appearance-none cursor-pointer"
+                className="w-full accent-signal-lime bg-ink h-2 rounded-lg appearance-none cursor-pointer"
               />
             </div>
           )}
 
-          {/* Temporary Nickname */}
+          {/* Temporary Nickname with 16px mobile font to prevent auto-zoom */}
           <div className="space-y-1.5">
             <label className="text-[11px] font-mono text-text-muted uppercase tracking-wider">
               Your Nickname
@@ -171,16 +171,17 @@ export const CreateRoomModal: React.FC<CreateRoomModalProps> = ({
                 onChange={(e) => setNickname(e.target.value)}
                 maxLength={30}
                 required
-                className="w-full bg-transparent px-2 text-xs font-mono text-text-primary outline-none"
+                className="w-full bg-transparent px-2 text-base sm:text-xs font-mono text-text-primary outline-none"
                 placeholder="Choose temporary moniker"
               />
               <button
                 type="button"
                 onClick={handleRandomizeNickname}
-                className="p-1.5 rounded-lg bg-ink-elevated hover:bg-ink-hover text-text-secondary hover:text-signal-lime transition-colors"
+                className="p-2 min-w-[36px] min-h-[36px] flex items-center justify-center rounded-lg bg-ink-elevated hover:bg-ink-hover text-text-secondary hover:text-signal-lime transition-colors active:scale-95"
                 title="Generate another nickname"
+                aria-label="Randomize nickname"
               >
-                <Sparkles className="w-3.5 h-3.5" />
+                <Sparkles className="w-4 h-4" />
               </button>
             </div>
           </div>
@@ -188,7 +189,7 @@ export const CreateRoomModal: React.FC<CreateRoomModalProps> = ({
           <button
             type="submit"
             disabled={loading || !nickname.trim()}
-            className="w-full py-2.5 px-4 rounded-xl bg-signal-lime hover:bg-[#c2ed5c] disabled:opacity-50 text-ink font-semibold text-xs flex items-center justify-center gap-2 transition-colors shadow-signal-glow-sm mt-3"
+            className="w-full min-h-[44px] py-3 px-4 rounded-xl bg-signal-lime hover:bg-[#c2ed5c] disabled:opacity-50 text-ink font-semibold text-xs flex items-center justify-center gap-2 transition-colors shadow-signal-glow-sm mt-3 active:scale-98"
           >
             {loading ? (
               <>
