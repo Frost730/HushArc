@@ -1,3 +1,4 @@
+import crypto from 'crypto';
 import type { WebSocket } from 'ws';
 import type { Room, Participant, ServerEvent } from './types.js';
 import { generateSecureToken, hashAccessSecret, verifyAccessSecret } from './security.js';
@@ -17,10 +18,12 @@ export class EphemeralRoomManager {
   private shortCodeToRoom = new Map<string, { roomId: string; accessSecret: string; shortCode: string }>();
 
   private readonly idleTimeoutMs: number;
+  private readonly maxRooms: number;
   private cleanupInterval: NodeJS.Timeout | null = null;
 
-  constructor(idleTimeoutMinutes = 60) {
+  constructor(idleTimeoutMinutes = 60, maxRooms = 5000) {
     this.idleTimeoutMs = idleTimeoutMinutes * 60 * 1000;
+    this.maxRooms = maxRooms;
 
     // Prune abandoned or expired rooms every 60 seconds
     this.cleanupInterval = setInterval(() => {
@@ -36,28 +39,30 @@ export class EphemeralRoomManager {
   }
 
   /**
-   * Generates a clean, human-friendly 6-digit room code (e.g. 482-915).
+   * Generates a clean, human-friendly 6-digit room code (e.g. 482-915) using CSPRNG.
    */
   private generateUniqueShortCode(): string {
     for (let attempts = 0; attempts < 200; attempts++) {
-      const num = Math.floor(100000 + Math.random() * 900000);
+      // Cryptographically secure random integer between 100000 and 999999
+      const num = crypto.randomInt(100000, 1000000);
       const code = `${String(num).slice(0, 3)}-${String(num).slice(3)}`;
       const normalized = this.normalizeShortCode(code);
       if (!this.shortCodeToRoom.has(normalized)) {
         return code;
       }
     }
-    // Fallback alphanumeric
+    // Fallback alphanumeric using CSPRNG
     const alpha = '23456789ABCDEFGHJKLMNPQRSTUVWXYZ';
     let code = '';
     for (let i = 0; i < 6; i++) {
-      code += alpha[Math.floor(Math.random() * alpha.length)];
+      code += alpha[crypto.randomInt(0, alpha.length)];
     }
     return `${code.slice(0, 3)}-${code.slice(3)}`;
   }
 
   /**
    * Creates a new ephemeral room with an access secret and easy-to-type short code.
+   * Returns null if server has reached maximum capacity.
    * Note: The encryption secret is NEVER received or handled by the server;
    * it stays in the client's URL fragment or is exchanged via sealed box!
    */
@@ -65,7 +70,11 @@ export class EphemeralRoomManager {
     roomId: string;
     accessSecret: string;
     shortCode: string;
-  } {
+  } | null {
+    if (this.rooms.size >= this.maxRooms) {
+      return null;
+    }
+
     const roomId = generateSecureToken(16); // 128-bit URL-safe random string
     const accessSecret = generateSecureToken(32); // 256-bit access capability
     const accessSecretHash = hashAccessSecret(accessSecret);
@@ -330,7 +339,10 @@ export class EphemeralRoomManager {
   public pruneExpiredRooms(): void {
     const now = Date.now();
     for (const [roomId, room] of this.rooms.entries()) {
-      if (now - room.lastActivityAt > this.idleTimeoutMs || room.participants.size === 0) {
+      const isPastIdleTimeout = now - room.lastActivityAt > this.idleTimeoutMs;
+      // Rooms created more than 5 minutes ago that never had participants are pruned
+      const isAbandoned = room.participants.size === 0 && now - room.createdAt > 300_000;
+      if (isPastIdleTimeout || isAbandoned) {
         this.destroyRoom(roomId, 'Room expired due to inactivity.');
       }
     }

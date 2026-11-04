@@ -40,6 +40,24 @@ export interface DecryptedMessage {
   attachment?: EphemeralAttachment;
 }
 
+function sanitizeAttachmentFileName(name: string): string {
+  return name.replace(/[/\\?%*:|"<>]/g, '_').replace(/[\x00-\x1f\x80-\x9f]/g, '').trim() || 'attachment';
+}
+
+function sanitizeAttachmentMimeType(type: string): string {
+  const lower = (type || '').toLowerCase().trim();
+  if (
+    lower.includes('html') ||
+    lower.includes('javascript') ||
+    lower.includes('svg+xml') ||
+    lower.includes('xml') ||
+    lower.includes('script')
+  ) {
+    return 'application/octet-stream';
+  }
+  return type || 'application/octet-stream';
+}
+
 export interface UseHushArcRoomOptions {
   roomId: string;
   accessSecret: string;
@@ -308,14 +326,16 @@ export function useHushArcRoom(options: UseHushArcRoomOptions) {
                     `epoch-${data.epoch}`
                   );
 
+                  const safeFileName = sanitizeAttachmentFileName(data.fileName);
+                  const safeFileType = sanitizeAttachmentMimeType(data.fileType);
                   let record = incomingAttachmentsRef.current.get(data.attachmentId);
                   if (!record) {
                     record = {
                       chunks: new Array(data.totalChunks).fill(null),
                       receivedCount: 0,
                       totalChunks: data.totalChunks,
-                      fileName: data.fileName,
-                      fileType: data.fileType,
+                      fileName: safeFileName,
+                      fileType: safeFileType,
                       fileSize: data.fileSize,
                       senderId: data.senderId,
                       senderNickname: data.senderNickname,
@@ -333,7 +353,7 @@ export function useHushArcRoom(options: UseHushArcRoomOptions) {
 
                   let blobUrl: string | undefined = undefined;
                   if (isComplete) {
-                    const blob = new Blob(record.chunks as BlobPart[], { type: record.fileType });
+                    const blob = new Blob(record.chunks as BlobPart[], { type: sanitizeAttachmentMimeType(record.fileType) });
                     blobUrl = URL.createObjectURL(blob);
                     createdBlobUrlsRef.current.push(blobUrl);
                     incomingAttachmentsRef.current.delete(data.attachmentId);
@@ -360,15 +380,15 @@ export function useHushArcRoom(options: UseHushArcRoomOptions) {
                         senderId: data.senderId,
                         senderNickname: data.senderNickname,
                         isMine: false,
-                        plaintext: `Shared file: ${data.fileName}`,
+                        plaintext: `Shared file: ${safeFileName}`,
                         timestamp: data.timestamp,
                         epoch: data.epoch,
                         deliveryStatus: 'delivered',
                         reactions: {},
                         attachment: {
                           id: data.attachmentId,
-                          fileName: data.fileName,
-                          fileType: data.fileType,
+                          fileName: safeFileName,
+                          fileType: safeFileType,
                           fileSize: data.fileSize,
                           blobUrl,
                           progress,

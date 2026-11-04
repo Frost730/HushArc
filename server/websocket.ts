@@ -12,8 +12,12 @@ export function setupWebSocket(httpServer: Server, roomManager: EphemeralRoomMan
     maxPayload: 65536, // 64 KB maximum WebSocket message size
   });
 
-  // Ephemeral per-connection rate limiter (max 60 events per 10s per socket)
-  const socketRateLimiter = new EphemeralRateLimiter(10_000, 60);
+  // Ephemeral rate limiter per client IP (max 100 events per 10s window)
+  const socketRateLimiter = new EphemeralRateLimiter(10_000, 100);
+
+  // Track active connection count per IP to prevent connection exhaustion attacks
+  const ipConnectionCounts = new Map<string, number>();
+  const MAX_CONNECTIONS_PER_IP = 25;
 
   // Heartbeat interval to drop dead connections
   const heartbeatInterval = setInterval(() => {
@@ -42,16 +46,64 @@ export function setupWebSocket(httpServer: Server, roomManager: EphemeralRoomMan
   });
 
   wss.on('connection', (ws: WebSocket, req) => {
-    // Generate a temporary identifier for rate limiting before join
-    const connectionKey = `${req.socket.remoteAddress || 'unknown'}:${Math.random().toString(36).slice(2)}`;
+    const origin = req.headers.origin;
+
+    // Cross-Site WebSocket Hijacking (CSWSH) protection:
+    // If the browser sends an Origin header, ensure it matches the server host or authorized domains
+    if (origin) {
+      try {
+        const parsed = new URL(origin);
+        const host = req.headers.host;
+        const isSameHost = host && (parsed.host === host);
+        const isLocalhost = parsed.hostname === 'localhost' || parsed.hostname === '127.0.0.1';
+        const isRender = parsed.hostname.endsWith('.onrender.com');
+        const isCustom = process.env.ALLOWED_ORIGIN && origin === process.env.ALLOWED_ORIGIN;
+
+        if (!isSameHost && !isLocalhost && !isRender && !isCustom) {
+          sendError(ws, 'FORBIDDEN_ORIGIN', 'Cross-origin WebSocket connection rejected by security policy.');
+          ws.close(4003, 'Forbidden origin');
+          return;
+        }
+      } catch {
+        sendError(ws, 'MALFORMED_ORIGIN', 'Malformed origin header.');
+        ws.close(4003, 'Malformed origin');
+        return;
+      }
+    }
+
+    // Resolve client IP (from reverse proxy or socket)
+    const clientIp =
+      (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() ||
+      req.socket.remoteAddress ||
+      'unknown';
+
+    // Prevent connection exhaustion per IP
+    const currentIpConns = ipConnectionCounts.get(clientIp) || 0;
+    if (currentIpConns >= MAX_CONNECTIONS_PER_IP) {
+      sendError(ws, 'TOO_MANY_CONNECTIONS', 'Too many concurrent connections from this IP.');
+      ws.close(4029, 'Connection limit exceeded');
+      return;
+    }
+    ipConnectionCounts.set(clientIp, currentIpConns + 1);
+
+    const decrementIpConn = () => {
+      const active = ipConnectionCounts.get(clientIp);
+      if (active !== undefined) {
+        if (active <= 1) {
+          ipConnectionCounts.delete(clientIp);
+        } else {
+          ipConnectionCounts.set(clientIp, active - 1);
+        }
+      }
+    };
 
     ws.on('pong', () => {
       roomManager.setSocketAlive(ws, true);
     });
 
     ws.on('message', (data: Buffer | ArrayBuffer | Buffer[]) => {
-      // 1. Rate limiting check
-      if (!socketRateLimiter.isAllowed(connectionKey)) {
+      // 1. Rate limiting check per IP
+      if (!socketRateLimiter.isAllowed(clientIp)) {
         sendError(ws, 'RATE_LIMITED', 'Too many events sent. Please slow down.');
         return;
       }
@@ -115,7 +167,7 @@ export function setupWebSocket(httpServer: Server, roomManager: EphemeralRoomMan
         }
 
         const room = joinResult.room;
-        const currentParticipants = Array.from(room.participants.values()).map(p => ({
+        const currentParticipants = Array.from(room.participants.values()).map((p) => ({
           id: p.id,
           nickname: p.nickname,
           publicKey: p.publicKey,
@@ -303,10 +355,12 @@ export function setupWebSocket(httpServer: Server, roomManager: EphemeralRoomMan
     });
 
     ws.on('close', () => {
+      decrementIpConn();
       roomManager.removeSocket(ws, 'Disconnected');
     });
 
     ws.on('error', () => {
+      decrementIpConn();
       roomManager.removeSocket(ws, 'Socket error');
     });
   });

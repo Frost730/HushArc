@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Check, CheckCheck, CornerDownRight, Smile, Reply, FileText, Download } from 'lucide-react';
+import { Check, CheckCheck, CornerDownRight, Smile, Reply, FileText, Download, X } from 'lucide-react';
 import type { DecryptedMessage } from '../../hooks/useHushArcRoom.js';
 import { ReactionPicker } from './ReactionPicker.js';
 
@@ -16,6 +16,27 @@ function formatBytes(bytes: number): string {
   return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
 }
 
+// Sanitize filename to prevent directory traversal or script injection in download attributes
+function sanitizeFileName(fileName: string): string {
+  return fileName
+    .replace(/[/\\?%*:|"<>]/g, '_')
+    .replace(/[\x00-\x1f\x80-\x9f]/g, '')
+    .trim() || 'attachment';
+}
+
+// Check if an image format is safe for inline rendering (strictly raster images, no SVGs)
+function isSafeRasterImage(fileType: string): boolean {
+  const lower = fileType.toLowerCase();
+  return (
+    (lower === 'image/jpeg' ||
+      lower === 'image/png' ||
+      lower === 'image/webp' ||
+      lower === 'image/gif') &&
+    !lower.includes('svg') &&
+    !lower.includes('xml')
+  );
+}
+
 export const MessageList: React.FC<MessageListProps> = ({
   messages,
   onReply,
@@ -23,6 +44,7 @@ export const MessageList: React.FC<MessageListProps> = ({
 }) => {
   const bottomRef = useRef<HTMLDivElement>(null);
   const [activeReactionMessageId, setActiveReactionMessageId] = useState<string | null>(null);
+  const [previewImage, setPreviewImage] = useState<{ url: string; name: string } | null>(null);
 
   // Auto-scroll on new messages
   useEffect(() => {
@@ -46,6 +68,7 @@ export const MessageList: React.FC<MessageListProps> = ({
         const isMine = msg.isMine;
         const quoted = getQuotedMessage(msg.replyToId);
         const hasReactions = Object.keys(msg.reactions).length > 0;
+        const safeName = msg.attachment ? sanitizeFileName(msg.attachment.fileName) : '';
 
         return (
           <div
@@ -100,13 +123,18 @@ export const MessageList: React.FC<MessageListProps> = ({
             >
               {msg.attachment ? (
                 <div className="space-y-2">
-                  {msg.attachment.fileType.startsWith('image/') && msg.attachment.blobUrl && (
+                  {isSafeRasterImage(msg.attachment.fileType) && msg.attachment.blobUrl && (
                     <div className="overflow-hidden rounded-xl border border-ink-border max-w-sm">
                       <img
                         src={msg.attachment.blobUrl}
-                        alt={msg.attachment.fileName}
+                        alt={safeName}
                         className="max-h-64 w-auto object-cover hover:scale-[1.02] transition-transform duration-200 cursor-pointer"
-                        onClick={() => window.open(msg.attachment!.blobUrl, '_blank')}
+                        onClick={() =>
+                          setPreviewImage({
+                            url: msg.attachment!.blobUrl!,
+                            name: safeName,
+                          })
+                        }
                       />
                     </div>
                   )}
@@ -115,8 +143,8 @@ export const MessageList: React.FC<MessageListProps> = ({
                   <div className="flex items-center gap-2.5 p-2 bg-ink/60 rounded-xl border border-ink-border font-mono text-xs">
                     <FileText className="w-5 h-5 text-signal-lime shrink-0" />
                     <div className="flex-1 min-w-0">
-                      <div className="font-semibold text-text-primary truncate" title={msg.attachment.fileName}>
-                        {msg.attachment.fileName}
+                      <div className="font-semibold text-text-primary truncate" title={safeName}>
+                        {safeName}
                       </div>
                       <div className="text-[10px] text-text-muted">
                         {formatBytes(msg.attachment.fileSize)}
@@ -135,7 +163,7 @@ export const MessageList: React.FC<MessageListProps> = ({
                     {msg.attachment.blobUrl && msg.attachment.isComplete && (
                       <a
                         href={msg.attachment.blobUrl}
-                        download={msg.attachment.fileName}
+                        download={safeName}
                         className="p-1.5 rounded-lg bg-ink hover:bg-signal-lime text-text-muted hover:text-ink transition-colors shrink-0"
                         title="Download ephemeral file"
                         aria-label="Download attachment"
@@ -208,6 +236,40 @@ export const MessageList: React.FC<MessageListProps> = ({
         );
       })}
       <div ref={bottomRef} />
+
+      {/* Safe In-App Image Lightbox Modal (avoids cross-origin window.open execution) */}
+      {previewImage && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fadeIn"
+          onClick={() => setPreviewImage(null)}
+          role="dialog"
+          aria-modal="true"
+        >
+          <div
+            className="relative max-w-4xl max-h-[90vh] bg-ink-elevated border border-ink-border rounded-2xl p-2 shadow-2xl overflow-hidden"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between p-2 border-b border-ink-border">
+              <span className="text-xs font-mono text-text-muted truncate max-w-xs">{previewImage.name}</span>
+              <button
+                type="button"
+                onClick={() => setPreviewImage(null)}
+                className="p-1 rounded-lg text-text-muted hover:text-text-primary"
+                aria-label="Close"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            <div className="p-2 flex items-center justify-center">
+              <img
+                src={previewImage.url}
+                alt={previewImage.name}
+                className="max-h-[75vh] w-auto object-contain rounded-lg"
+              />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

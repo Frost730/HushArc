@@ -13,7 +13,9 @@ describe('EphemeralRoomManager (In-Memory)', () => {
   });
 
   it('creates an ephemeral room with unique ID and independent access secret', () => {
-    const { roomId, accessSecret, shortCode } = roomManager.createRoom();
+    const created = roomManager.createRoom();
+    expect(created).not.toBeNull();
+    const { roomId, accessSecret, shortCode } = created!;
 
     expect(roomId).toBeDefined();
     expect(accessSecret).toBeDefined();
@@ -39,7 +41,9 @@ describe('EphemeralRoomManager (In-Memory)', () => {
   });
 
   it('validates correct access secret and rejects wrong access secret', () => {
-    const { roomId, accessSecret } = roomManager.createRoom();
+    const created = roomManager.createRoom();
+    expect(created).not.toBeNull();
+    const { roomId, accessSecret } = created!;
 
     const valid = roomManager.validateRoomAccess(roomId, accessSecret);
     expect(valid.valid).toBe(true);
@@ -56,7 +60,9 @@ describe('EphemeralRoomManager (In-Memory)', () => {
   });
 
   it('enforces room maximum participant capacity', () => {
-    const { roomId, accessSecret } = roomManager.createRoom({ maxParticipants: 2 });
+    const created = roomManager.createRoom({ maxParticipants: 2 });
+    expect(created).not.toBeNull();
+    const { roomId, accessSecret } = created!;
     const mockSocket1 = {} as any;
     const mockSocket2 = {} as any;
     const mockSocket3 = {} as any;
@@ -91,8 +97,18 @@ describe('EphemeralRoomManager (In-Memory)', () => {
     expect(j3.reason).toContain('maximum capacity');
   });
 
+  it('enforces server-wide maximum room limit to prevent memory exhaustion', () => {
+    const limitedManager = new EphemeralRoomManager(30, 2);
+    expect(limitedManager.createRoom()).not.toBeNull();
+    expect(limitedManager.createRoom()).not.toBeNull();
+    expect(limitedManager.createRoom()).toBeNull();
+    limitedManager.shutdown();
+  });
+
   it('immediately destroys a room when its last participant leaves', () => {
-    const { roomId, accessSecret } = roomManager.createRoom();
+    const created = roomManager.createRoom();
+    expect(created).not.toBeNull();
+    const { roomId, accessSecret } = created!;
     const mockSocket = {} as any;
 
     roomManager.joinRoom(mockSocket, {

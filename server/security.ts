@@ -63,13 +63,30 @@ export class EphemeralRateLimiter {
   }
 }
 
-// Global IP limiter for REST API endpoints
-const apiLimiter = new EphemeralRateLimiter(60_000, 30); // 30 requests per minute
+// Helper to retrieve client IP securely via Express trust proxy
+export function getClientIp(req: Request): string {
+  return req.ip || req.socket.remoteAddress || 'unknown';
+}
+
+// Global IP limiter for general REST API endpoints (30 requests per minute)
+const apiLimiter = new EphemeralRateLimiter(60_000, 30);
 
 export function expressRateLimit(req: Request, res: Response, next: NextFunction): void {
-  const ip = (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() || req.socket.remoteAddress || 'unknown';
+  const ip = getClientIp(req);
   if (!apiLimiter.isAllowed(ip)) {
     res.status(429).json({ error: 'Too many requests. Please wait a moment.' });
+    return;
+  }
+  next();
+}
+
+// Strict rate limiter for resolving 6-digit short codes to prevent enumeration / brute-force scanning (15 requests per minute)
+const resolveLimiter = new EphemeralRateLimiter(60_000, 15);
+
+export function resolveCodeRateLimit(req: Request, res: Response, next: NextFunction): void {
+  const ip = getClientIp(req);
+  if (!resolveLimiter.isAllowed(ip)) {
+    res.status(429).json({ error: 'Too many room code resolution attempts. Please wait a moment.' });
     return;
   }
   next();
